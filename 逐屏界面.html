@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DrRuby · §3 逐屏界面（核心屏）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* §1 设计 Token */
+    --brand-rose:#C2185B;
+    --brand-rose-tint:#F8D7E3;
+    --text-primary:#1F2024;
+    --text-secondary:#6B7280;
+    --surface:#F5F6F8;
+    --sis-positive:#2E9E6B;
+    --sis-zero:#9AA0A6;
+    --sis-negative:#E0613A;
+    --mcs-high:#2E9E6B;
+    --mcs-med:#E0A23A;
+    --mcs-low:#D14343;
+    --dark:#16171B;
+
+    --board-bg:#ECEEF2;
+    --card:#FFFFFF;
+    --hair:#E5E7EB;
+    --hair-soft:#EEF0F3;
+    --shadow-sm:0 1px 2px rgba(16,18,28,.05), 0 1px 3px rgba(16,18,28,.06);
+    --shadow-md:0 6px 18px rgba(16,18,28,.08), 0 2px 6px rgba(16,18,28,.05);
+    --shadow-lg:0 18px 48px rgba(16,18,28,.16);
+    --font:"Inter",-apple-system,"SF Pro Text","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font);
+    background:var(--board-bg);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  :lang(zh){line-height:1.7;}
+  h1,h2,h3,h4,h5,p{margin:0;}
+  .board{max-width:1480px;margin:0 auto;padding:48px 40px 110px;}
+
+  /* ——— Header ——— */
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:14px;}
+  .head .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:10px;}
+  .head h1{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .head .sub{font-size:15px;color:var(--text-secondary);margin-top:8px;max-width:600px;}
+  .head .meta{font-size:12.5px;color:var(--text-secondary);text-align:right;line-height:1.9;}
+  .head .meta b{color:var(--text-primary);font-weight:600;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 8px;padding-top:22px;border-top:1px solid var(--hair);}
+  .swatch{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-secondary);background:var(--card);border:1px solid var(--hair);border-radius:999px;padding:5px 11px 5px 6px;box-shadow:var(--shadow-sm);}
+  .swatch i{width:14px;height:14px;border-radius:5px;display:inline-block;}
+  .swatch b{color:var(--text-primary);font-weight:600;}
+  .scope-note{font-size:12.5px;color:var(--text-secondary);margin:14px 0 40px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:11px 15px;box-shadow:var(--shadow-sm);}
+  .scope-note b{color:var(--text-primary);}
+
+  /* ——— Section frame ——— */
+  .section{margin-bottom:30px;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin:46px 0 26px;}
+  .sec-badge{font-size:14px;font-weight:800;color:#fff;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;}
+  .sec-head h2{font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  .sec-head .note{font-size:13px;color:var(--text-secondary);}
+
+  /* ——— device rail ——— */
+  .rail{display:flex;flex-wrap:wrap;gap:34px 30px;align-items:flex-start;}
+  .device{display:flex;flex-direction:column;gap:13px;width:344px;}
+  .dlabel{display:flex;align-items:center;gap:9px;}
+  .dlabel .dno{font-size:12px;font-weight:800;color:#fff;background:var(--text-primary);border-radius:7px;min-width:30px;height:24px;display:grid;place-items:center;flex:none;padding:0 6px;}
+  .dlabel .dnm{font-size:14px;font-weight:700;}
+  .dlabel .dtag{font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:2px 8px;}
+  .dtag.light{background:#EEF4FF;color:#3B6FD4;}
+  .dtag.dark{background:var(--dark);color:#fff;}
+  .dtag.star{background:var(--brand-rose-tint);color:var(--brand-rose);}
+  .ddesc{font-size:11.5px;color:var(--text-secondary);margin-top:-6px;line-height:1.55;}
+
+  /* segmented state toggle above a phone */
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:3px;gap:3px;box-shadow:var(--shadow-sm);align-self:flex-start;}
+  .seg button{font-family:var(--font);font-size:11.5px;font-weight:600;color:var(--text-secondary);background:transparent;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .seg button.on{background:var(--brand-rose);color:#fff;box-shadow:0 3px 8px rgba(194,24,91,.28);}
+  .seg.dk button.on{background:#33353C;}
+
+  /* ——— phone frame ——— */
+  .phone{width:344px;height:728px;background:#0E0F12;border-radius:46px;padding:11px;box-shadow:var(--shadow-lg);position:relative;flex:none;}
+  .screen{position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;}
+  .screen.dk{background:#0B0C0F;color:#fff;}
+  .notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:27px;background:#0E0F12;border-radius:0 0 16px 16px;z-index:30;}
+  /* status bar */
+  .sbar{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;font-size:13px;font-weight:600;z-index:20;}
+  .sbar .ic{display:flex;gap:5px;align-items:center;}
+  .sbar .ic svg{width:16px;height:16px;}
+  .screen.dk .sbar{color:#fff;}
+  /* home indicator */
+  .homeind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:999px;background:#111317;opacity:.85;z-index:25;}
+  .screen.dk .homeind{background:#fff;opacity:.6;}
+
+  .body{flex:1;overflow:hidden;position:relative;}
+  .pad{padding:6px 20px 0;}
+
+  /* generic UI primitives */
+  .h-title{font-size:22px;font-weight:800;letter-spacing:-.01em;}
+  .h-sub{font-size:13px;color:var(--text-secondary);margin-top:5px;}
+  .screen.dk .h-sub{color:#9DA2AC;}
+  .appbar{display:flex;align-items:center;gap:12px;padding:4px 20px 8px;}
+  .appbar .back{width:30px;height:30px;border-radius:9px;background:rgba(0,0,0,.04);display:grid;place-items:center;color:var(--text-primary);flex:none;}
+  .screen.dk .appbar .back{background:rgba(255,255,255,.08);color:#fff;}
+  .appbar .at{font-size:15px;font-weight:700;}
+  .appbar .step{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--text-secondary);}
+
+  .card{background:var(--card);border-radius:18px;box-shadow:var(--shadow-sm);padding:16px;border:1px solid var(--hair-soft);}
+  .screen.dk .card{background:#15171C;border-color:#23262E;box-shadow:none;}
+  .pill-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--brand-rose);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;border:none;border-radius:999px;padding:15px;box-shadow:0 8px 18px rgba(194,24,91,.32);cursor:pointer;}
+  .pill-btn.ghost{background:transparent;color:var(--text-primary);box-shadow:none;border:1px solid var(--hair);}
+  .pill-btn.disabled{background:#E7E8EC;color:#A6AAB2;box-shadow:none;cursor:not-allowed;}
+  .pill-btn svg{width:18px;height:18px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 11px;}
+  .chip i{width:7px;height:7px;border-radius:999px;flex:none;}
+
+  /* bottom tab bar (in-app screens) */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--hair-soft);padding:7px 8px 22px;display:flex;align-items:flex-end;justify-content:space-around;z-index:15;}
+  .tb{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sis-zero);flex:1;padding-top:4px;}
+  .tb svg{width:23px;height:23px;}
+  .tb .l{font-size:10px;font-weight:600;}
+  .tb.active{color:var(--brand-rose);}
+  .tb-cap{flex:0 0 auto;width:60px;position:relative;}
+  .tb-cap .cb{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--brand-rose);color:#fff;display:grid;place-items:center;box-shadow:0 10px 20px rgba(194,24,91,.4);border:4px solid #fff;}
+  .tb-cap .cb svg{width:25px;height:25px;}
+  .tb-cap .l{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);font-size:9.5px;font-weight:700;color:var(--brand-rose);white-space:nowrap;}
+
+  .scroll-fade{position:absolute;left:0;right:0;bottom:0;height:46px;background:linear-gradient(transparent,var(--surface));pointer-events:none;z-index:10;}
+
+  .footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--hair);font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+
+  /* state-variant visibility helpers */
+  [data-show]{display:none;}
+  [data-show].vis{display:block;}
+  [data-showflex].vis{display:flex;}
+</style>
+</head>
+<body>
+<main class="board">
+
+  <!-- ============ HEADER ============ -->
+  <header class="head">
+    <div>
+      <div class="eyebrow">DrRuby · §3 逐屏提示词 → 界面稿</div>
+      <h1>核心屏高保真</h1>
+      <p class="sub">26 周 Split-Face 皮肤研究采集端 · Flutter 跨平台。本批覆盖<b> 核心采集主流程（屏 11–16）+ Washout（屏 10）+ SIS 结果流（屏 18–19）</b>，共 9 屏。逻辑帧 393×852，内容浅色 / 相机深色。</p>
+    </div>
+    <div class="meta">
+      基线：<b>app-prompts v1.0</b> · <b>MVP2.md</b><br/>
+      延续 <b>§2 信息架构</b>视觉语言<br/>
+      品牌色 <b style="color:var(--brand-rose)">Ruby #C2185B</b>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span class="swatch"><i style="background:var(--brand-rose)"></i><b>Rose</b> 主操作/品牌</span>
+    <span class="swatch"><i style="background:var(--sis-positive)"></i><b>SIS+ / MCS High</b> 改善</span>
+    <span class="swatch"><i style="background:var(--mcs-med)"></i><b>MCS Med</b> 中等</span>
+    <span class="swatch"><i style="background:var(--sis-negative)"></i><b>SIS− / 刺激</b> 警示</span>
+    <span class="swatch"><i style="background:var(--sis-zero)"></i><b>Zero</b> 无差异</span>
+    <span class="swatch"><i style="background:var(--dark)"></i><b>Dark</b> 相机/采集屏</span>
+  </div>
+  <p class="scope-note">📐 <b>多状态说明</b>：屏 13（左脸/右脸）、屏 14（MCS High/Med/Low）、屏 18（SIS +/0/−）顶部带<b>分段切换器</b>，点击即可在提示词要求的各状态间预览同一屏。其余为单一精修稿。</p>
+
+  <!-- ============ 流程 B · WASHOUT ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#E0A23A">B</span>
+    <h2>流程 B · Washout 洗脱期</h2>
+    <span class="note">F2 · 入组后 14 天，两侧回到同一基线，倒计时锁定 Week 0 采集。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 10 · Washout 倒计时 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">10</span><span class="dnm">Washout 倒计时</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">环形倒计时 Day N/14 · 指令卡 · 完成按钮在第 14 天前锁定。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">Washout 洗脱期</span><span class="chip" style="background:#FBF3E2;color:#B07A14;margin-left:auto"><i style="background:#E0A23A"></i>进行中</span></div>
+            <div class="pad" style="display:flex;flex-direction:column;align-items:center;">
+              <div style="position:relative;width:208px;height:208px;margin:14px 0 6px;">
+                <svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg)">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#EAEBEF" stroke-width="11"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#E0A23A" stroke-width="11" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="210.3"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <div style="font-size:13px;font-weight:700;color:var(--text-secondary);letter-spacing:.04em;">DAY</div>
+                  <div style="font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em;">5<span style="font-size:22px;color:var(--text-secondary);font-weight:700;"> / 14</span></div>
+                  <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">还差 9 天</div>
+                </div>
+              </div>
+              <div style="text-align:center;margin-bottom:14px;"><div class="h-title" style="font-size:19px;">洗脱进行中</div><div class="h-sub">让两侧皮肤回到同一基线</div></div>
+              <div class="card" style="width:100%;text-align:left;background:#FDF8EC;border-color:#F3E6C2;">
+                <div style="display:flex;gap:10px;align-items:flex-start;"><span style="font-size:17px;">🧴</span><div><div style="font-size:13px;font-weight:700;">仅使用指定基础护理</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">两侧均只用「洁面 + 基础保湿」，<b style="color:var(--text-primary)">停用其他所有产品</b>。</div></div></div>
+              </div>
+              <div style="width:100%;margin-top:14px;">
+                <button class="pill-btn disabled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>完成 Washout · 9 天后解锁</button>
+              </div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 C · 采集主流程 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:var(--brand-rose)">C</span>
+    <h2>流程 C · 采集主流程（核心 · App 主功能）</h2>
+    <span class="note">F3 · 线性强制流 11 → 12 → 13 → 14 → 15 → 16，每周 2 次 Split-Face 采集。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 11 · 首页 Dashboard -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">11</span><span class="dnm">首页 / Dashboard</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">Week 7/26 进度 + 下次采集 hero + MCS 提示 + 协议状态。底部 4-Tab。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-bottom:90px;overflow:auto;height:100%;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 4px;">
+                <div><div style="font-size:12px;color:var(--text-secondary);">早上好，Mia</div><div style="font-size:19px;font-weight:800;">研究第 7 周</div></div>
+                <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#F8D7E3,#C2185B);"></div>
+              </div>
+              <!-- week progress -->
+              <div class="card" style="padding:15px 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;"><span style="font-size:13px;font-weight:700;">Week <b style="font-size:17px;">7</b> <span style="color:var(--text-secondary);font-weight:600;">/ 26</span></span><span class="chip" style="background:#E7F5EE;color:#1E7A50;"><i style="background:var(--sis-positive)"></i>Active</span></div>
+                <div style="display:flex;gap:2.5px;">
+                  <span style="flex:7;height:7px;border-radius:4px;background:var(--brand-rose);"></span>
+                  <span style="flex:1;height:7px;border-radius:4px;background:var(--brand-rose-tint);"></span>
+                  <span style="flex:18;height:7px;border-radius:4px;background:#E9EBEF;"></span>
+                </div>
+              </div>
+              <!-- hero next capture -->
+              <div class="card" style="margin-top:12px;background:linear-gradient(140deg,#fff 40%,#FCEAF1);border-color:#F4D4E0;">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--brand-rose);"><span style="width:7px;height:7px;border-radius:50%;background:var(--brand-rose);"></span>下次采集 · 每周 2 次</div>
+                <div style="font-size:18px;font-weight:800;margin:7px 0 3px;">周四采集已就绪</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">左脸 → 右脸，约需 2 分钟。建议自然光下完成。</div>
+                <button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>开始采集</button>
+              </div>
+              <!-- MCS soft tip -->
+              <div class="card" style="margin-top:12px;display:flex;gap:11px;align-items:flex-start;background:#FBF3E2;border-color:#F0E2BE;">
+                <span style="width:30px;height:30px;border-radius:9px;background:#F6E4B8;display:grid;place-items:center;flex:none;">💡</span>
+                <div><div style="font-size:13px;font-weight:700;">提升采集质量</div><div style="font-size:12px;color:var(--text-secondary);">上次采集光线偏暗（MCS 中等）。建议靠窗、自然光下拍摄。</div></div>
+              </div>
+              <!-- milestone teaser -->
+              <div class="card" style="margin-top:12px;display:flex;align-items:center;gap:11px;">
+                <span style="width:30px;height:30px;border-radius:9px;background:var(--brand-rose-tint);display:grid;place-items:center;flex:none;">🏅</span>
+                <div style="flex:1;"><div style="font-size:13px;font-weight:700;">新里程碑：持续改善 3 周</div><div style="font-size:11.5px;color:var(--text-secondary);">查看可分享卡片</div></div>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <!-- protocol row -->
+              <div class="card" style="margin-top:12px;display:flex;align-items:center;gap:11px;">
+                <span style="width:30px;height:30px;border-radius:9px;background:var(--surface);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13px;font-weight:700;">研究协议</div><div style="font-size:11.5px;color:var(--text-secondary);">需要时可暂停 · 冻结周计数</div></div>
+                <span style="font-size:11.5px;font-weight:700;color:var(--brand-rose);">暂停</span>
+              </div>
+            </div>
+            <div class="scroll-fade" style="bottom:78px;"></div>
+          </div>
+          <nav class="tabbar">
+            <div class="tb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span class="l">首页</span></div>
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg><span class="l">洞察</span></div>
+            <div class="tb-cap"><div class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg></div><span class="l">采集</span></div>
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span class="l">我的</span></div>
+          </nav>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 12 · 采集前清单 (dark) -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">12</span><span class="dnm">采集前清单</span><span class="dtag dark">深色</span></div>
+      <p class="ddesc">卸妆确认（必选）+ 实时光线检测；光线不足时「继续」禁用。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen dk">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div><span class="at">采集前准备</span><span class="step">第 1 步 / 2</span></div>
+            <div class="pad">
+              <div class="h-title" style="color:#fff;margin-top:4px;">开始前的两项检查</div>
+              <div class="h-sub">确保两次采集条件一致、可比。</div>
+              <!-- checklist toggle -->
+              <div class="card" style="margin-top:18px;display:flex;align-items:center;gap:13px;">
+                <span style="width:30px;height:30px;border-radius:50%;background:var(--sis-positive);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">我已卸妆并清洁</div><div style="font-size:11.5px;color:#9DA2AC;">裸肤可获得最准确的对比</div></div>
+                <span style="width:46px;height:27px;border-radius:999px;background:var(--sis-positive);position:relative;flex:none;"><span style="position:absolute;top:3px;right:3px;width:21px;height:21px;border-radius:50%;background:#fff;"></span></span>
+              </div>
+              <!-- lighting meter -->
+              <div class="card" style="margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13px;font-weight:700;">环境光线</span><span style="font-size:12px;color:#9DA2AC;">实时检测</span></div>
+                <div style="display:flex;align-items:flex-end;gap:8px;margin:14px 0 6px;"><span style="font-size:38px;font-weight:800;line-height:1;color:var(--mcs-high);">680</span><span style="font-size:13px;color:#9DA2AC;margin-bottom:5px;">lux</span></div>
+                <div style="height:8px;border-radius:5px;background:#23262E;position:relative;overflow:hidden;"><span style="position:absolute;left:0;top:0;height:100%;width:74%;border-radius:5px;background:linear-gradient(90deg,#D14343,#E0A23A 45%,#2E9E6B 75%);"></span><span style="position:absolute;left:74%;top:-3px;width:3px;height:14px;border-radius:2px;background:#fff;"></span></div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6B7280;margin-top:5px;"><span>太暗</span><span>偏暗</span><span>良好</span></div>
+              </div>
+              <div style="margin-top:14px;display:flex;align-items:center;gap:9px;background:rgba(46,158,107,.14);border:1px solid rgba(46,158,107,.3);border-radius:13px;padding:11px 14px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#43C58C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span style="font-size:12.5px;font-weight:600;color:#7FE0B4;">光线良好，可以开始采集</span>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>继续到相机</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 13 · AR 相机采集 (dark) ★ -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">13</span><span class="dnm">AR 相机采集</span><span class="dtag dark">深色</span><span class="dtag star">★ 核心</span></div>
+      <p class="ddesc">AR 引导框 + 距离提示 + 4 项实时质检 + 强制左→右顺序。</p>
+      <div class="seg dk" data-toggle="ar"><button class="on" data-v="left">步骤 1 · 左脸</button><button data-v="right">步骤 2 · 右脸</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen dk" style="background:#070809;">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body" style="background:radial-gradient(120% 80% at 50% 38%,#23262C,#0A0B0D 75%);">
+            <!-- top forced order indicator -->
+            <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);backdrop-filter:blur(6px);border-radius:999px;padding:7px 15px;display:flex;align-items:center;gap:9px;z-index:8;">
+              <span style="font-size:12px;font-weight:700;color:#fff;" data-show="left" class="vis">步骤 1 / 2 · <span style="color:#F8D7E3;">左脸 LEFT</span></span>
+              <span style="font-size:12px;font-weight:700;color:#fff;" data-show="right">步骤 2 / 2 · <span style="color:#F8D7E3;">右脸 RIGHT</span></span>
+              <span style="display:flex;gap:4px;"><i style="width:18px;height:4px;border-radius:2px;background:var(--brand-rose);"></i><i class="ar-dot2" style="width:18px;height:4px;border-radius:2px;background:#3A3D44;"></i></span>
+            </div>
+            <!-- AR oval guide -->
+            <div style="position:absolute;top:104px;left:50%;transform:translateX(-50%);width:212px;height:286px;">
+              <svg viewBox="0 0 212 286" style="width:100%;height:100%;">
+                <ellipse cx="106" cy="143" rx="98" ry="134" fill="none" stroke="#2E9E6B" stroke-width="3" stroke-dasharray="6 8" opacity=".9"/>
+                <!-- cheekbone/under-eye triangle target -->
+                <path data-show="left" class="vis" d="M70 120 L150 132 L96 196 Z" fill="rgba(46,158,107,.12)" stroke="#43C58C" stroke-width="2"/>
+                <path data-show="right" d="M62 132 L142 120 L116 196 Z" fill="rgba(46,158,107,.12)" stroke="#43C58C" stroke-width="2"/>
+                <!-- corner brackets -->
+                <g stroke="#fff" stroke-width="2.4" fill="none" opacity=".85" stroke-linecap="round"><path d="M30 56 v-14 h14"/><path d="M182 56 v-14 h-14"/><path d="M30 230 v14 h14"/><path d="M182 230 v14 h-14"/></g>
+              </svg>
+              <div style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);background:rgba(46,158,107,.9);border-radius:999px;padding:3px 10px;font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;">已对齐 · 保持约 20cm</div>
+            </div>
+            <!-- quality HUD -->
+            <div style="position:absolute;bottom:128px;left:18px;right:18px;display:grid;grid-template-columns:1fr 1fr;gap:8px;z-index:8;">
+              <div style="display:flex;align-items:center;gap:7px;background:rgba(46,158,107,.16);border:1px solid rgba(46,158,107,.4);border-radius:10px;padding:7px 10px;"><i style="width:7px;height:7px;border-radius:50%;background:#43C58C;"></i><span style="font-size:11.5px;font-weight:600;color:#9FE7C4;">清晰度</span><svg style="margin-left:auto" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#43C58C" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div style="display:flex;align-items:center;gap:7px;background:rgba(46,158,107,.16);border:1px solid rgba(46,158,107,.4);border-radius:10px;padding:7px 10px;"><i style="width:7px;height:7px;border-radius:50%;background:#43C58C;"></i><span style="font-size:11.5px;font-weight:600;color:#9FE7C4;">对焦</span><svg style="margin-left:auto" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#43C58C" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div style="display:flex;align-items:center;gap:7px;background:rgba(46,158,107,.16);border:1px solid rgba(46,158,107,.4);border-radius:10px;padding:7px 10px;"><i style="width:7px;height:7px;border-radius:50%;background:#43C58C;"></i><span style="font-size:11.5px;font-weight:600;color:#9FE7C4;">动态模糊</span><svg style="margin-left:auto" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#43C58C" stroke-width="2.6" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div style="display:flex;align-items:center;gap:7px;background:rgba(224,162,58,.16);border:1px solid rgba(224,162,58,.45);border-radius:10px;padding:7px 10px;"><i style="width:7px;height:7px;border-radius:50%;background:#E0A23A;"></i><span style="font-size:11.5px;font-weight:600;color:#F0C97E;">亮度</span><span style="margin-left:auto;font-size:10px;color:#F0C97E;">微调</span></div>
+            </div>
+            <!-- shutter -->
+            <div style="position:absolute;bottom:30px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:34px;z-index:8;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#9DA2AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+              <div style="width:72px;height:72px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center;"><div style="width:58px;height:58px;border-radius:50%;background:#fff;"></div></div>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#9DA2AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 14 · MCS 即时评分 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">14</span><span class="dnm">MCS 即时评分</span><span class="dtag dark">深→浅</span></div>
+      <p class="ddesc">采集后即时质量徽章 High/Med/Low + 左右缩略图 + 软提示。</p>
+      <div class="seg dk" data-toggle="mcs"><button class="on" data-v="high">High</button><button data-v="med">Medium</button><button data-v="low">Low</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen dk" style="background:linear-gradient(180deg,#0B0C0F 0%,#15171C 52%,#1B1E24 100%);">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+              <div style="font-size:12.5px;color:#9DA2AC;margin:14px 0 18px;letter-spacing:.04em;">采集质量评分 · MCS</div>
+              <!-- badge ring -->
+              <div style="position:relative;width:178px;height:178px;">
+                <svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg)">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="#23262E" stroke-width="9"/>
+                  <circle class="mcs-ring" cx="60" cy="60" r="52" fill="none" stroke="#2E9E6B" stroke-width="9" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="26"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                  <div class="mcs-emoji" style="font-size:30px;">✓</div>
+                  <div class="mcs-label" style="font-size:27px;font-weight:800;color:#43C58C;margin-top:2px;">HIGH</div>
+                  <div class="mcs-score" style="font-size:12px;color:#9DA2AC;margin-top:1px;">92 / 100</div>
+                </div>
+              </div>
+              <div class="mcs-head" style="font-size:17px;font-weight:800;color:#fff;margin:18px 0 4px;">采集质量优秀</div>
+              <div class="mcs-note" style="font-size:12.5px;color:#9DA2AC;max-width:250px;">光线是关键因素 —— 本次表现很好。</div>
+              <!-- thumbnails -->
+              <div style="display:flex;gap:12px;margin-top:20px;width:100%;">
+                <div style="flex:1;"><div style="aspect-ratio:3/4;border-radius:14px;background:linear-gradient(135deg,#2A2E36,#3A3F48);border:1px solid #2E323A;position:relative;"><span style="position:absolute;left:7px;top:7px;font-size:9.5px;font-weight:700;background:rgba(0,0,0,.55);color:#fff;border-radius:6px;padding:2px 7px;">左 left</span></div></div>
+                <div style="flex:1;"><div style="aspect-ratio:3/4;border-radius:14px;background:linear-gradient(135deg,#2A2E36,#3A3F48);border:1px solid #2E323A;position:relative;"><span style="position:absolute;left:7px;top:7px;font-size:9.5px;font-weight:700;background:rgba(0,0,0,.55);color:#fff;border-radius:6px;padding:2px 7px;">右 right</span></div></div>
+              </div>
+              <!-- low-quality soft tip (only low) -->
+              <div class="mcs-tip" data-show="low" style="margin-top:14px;width:100%;display:flex;gap:9px;align-items:flex-start;background:rgba(209,67,67,.14);border:1px solid rgba(209,67,67,.34);border-radius:13px;padding:11px 13px;text-align:left;">
+                <span style="font-size:15px;">💡</span><div style="font-size:11.5px;color:#F1A7A7;">本次质量偏低（非阻断）。下次建议靠窗、自然光下采集。</div>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>继续填写情境</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 15 · Context 表单 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">15</span><span class="dnm">Context 表单</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">混淆因素采集 · 产品/经期(经期用户隐藏)/睡眠/UV/补水，1 分钟内。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">今日情境</span><span class="step">约 1 分钟</span></div>
+            <div class="pad" style="padding-bottom:88px;overflow:auto;height:calc(100% - 40px);">
+              <!-- products per side -->
+              <div style="font-size:12.5px;font-weight:700;margin:6px 0 9px;">今天用了哪些产品？</div>
+              <div class="card" style="padding:14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--brand-rose);margin-bottom:8px;">干预侧（左）</div>
+                <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                  <span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">视黄醇 ✓</span>
+                  <span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">维 C 精华 ✓</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">+ 烟酰胺</span>
+                </div>
+                <div style="height:1px;background:var(--hair-soft);margin:12px 0;"></div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;">对照侧（右）· 基线</div>
+                <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                  <span class="chip" style="background:#EEF4FF;color:#3B6FD4;">洁面 ✓</span>
+                  <span class="chip" style="background:#EEF4FF;color:#3B6FD4;">保湿 ✓</span>
+                  <span class="chip" style="background:#EEF4FF;color:#3B6FD4;">SPF50 ✓</span>
+                </div>
+              </div>
+              <!-- menstrual (hidden note) -->
+              <div class="card" style="margin-top:12px;display:flex;align-items:center;gap:11px;background:var(--surface);border-style:dashed;">
+                <span style="font-size:15px;opacity:.5;">🗓️</span>
+                <div style="flex:1;font-size:11.5px;color:var(--text-secondary);">经期天数 · <b style="color:var(--text-primary)">已为绝经用户自动隐藏</b></div>
+              </div>
+              <!-- sleep (no wearable) -->
+              <div style="font-size:12.5px;font-weight:700;margin:16px 0 9px;">睡眠质量 <span style="font-weight:500;color:var(--text-secondary);font-size:11px;">· 未连接穿戴设备时填写</span></div>
+              <div style="display:flex;gap:7px;">
+                <span style="flex:1;text-align:center;font-size:13px;font-weight:700;padding:10px 0;border-radius:11px;background:var(--surface);color:var(--text-secondary);">1</span>
+                <span style="flex:1;text-align:center;font-size:13px;font-weight:700;padding:10px 0;border-radius:11px;background:var(--surface);color:var(--text-secondary);">2</span>
+                <span style="flex:1;text-align:center;font-size:13px;font-weight:700;padding:10px 0;border-radius:11px;background:var(--surface);color:var(--text-secondary);">3</span>
+                <span style="flex:1;text-align:center;font-size:13px;font-weight:800;padding:10px 0;border-radius:11px;background:var(--brand-rose);color:#fff;">4</span>
+                <span style="flex:1;text-align:center;font-size:13px;font-weight:700;padding:10px 0;border-radius:11px;background:var(--surface);color:var(--text-secondary);">5</span>
+              </div>
+              <!-- UV + hydration -->
+              <div style="display:flex;gap:12px;margin-top:16px;">
+                <div class="card" style="flex:1;padding:13px;"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;">UV 暴露</div><div style="font-size:18px;font-weight:800;margin-top:3px;">2<span style="font-size:11px;color:var(--text-secondary);font-weight:600;"> 小时</span></div></div>
+                <div class="card" style="flex:1;padding:13px;"><div style="font-size:11px;color:var(--text-secondary);font-weight:600;">补水程度</div><div style="font-size:14px;font-weight:800;margin-top:5px;color:var(--sis-positive);">充足</div></div>
+              </div>
+            </div>
+            <div class="scroll-fade" style="bottom:76px;"></div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>提交并上传</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 16 · 上传进度/完成 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">16</span><span class="dnm">上传进度 / 完成</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">4 张图加密上传 + 离线队列 + 完成态 + 漏采降级软提示。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-top:14px;">
+              <!-- success header -->
+              <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin:8px 0 4px;">
+                <div style="width:62px;height:62px;border-radius:50%;background:#E7F5EE;display:grid;place-items:center;"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#2E9E6B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+                <div class="h-title" style="font-size:19px;margin-top:12px;">本周采集完成</div>
+                <div class="h-sub">已评分（MCS 高），结果稍后送达。</div>
+              </div>
+              <!-- thumbnails uploading -->
+              <div class="card" style="margin-top:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:12.5px;font-weight:700;">加密上传中</span><span style="font-size:11px;color:var(--sis-positive);font-weight:700;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>端到端加密</span></div>
+                <div style="display:flex;gap:8px;">
+                  <div style="flex:1;text-align:center;"><div style="aspect-ratio:3/4;border-radius:10px;background:#E6E8EC;position:relative;overflow:hidden;"><span style="position:absolute;left:0;bottom:0;width:100%;height:100%;background:rgba(46,158,107,.16);"></span><svg style="position:absolute;inset:0;margin:auto" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2E9E6B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div><div style="font-size:9px;color:var(--text-secondary);margin-top:3px;">左 1</div></div>
+                  <div style="flex:1;text-align:center;"><div style="aspect-ratio:3/4;border-radius:10px;background:#E6E8EC;position:relative;overflow:hidden;"><span style="position:absolute;left:0;bottom:0;width:100%;height:100%;background:rgba(46,158,107,.16);"></span><svg style="position:absolute;inset:0;margin:auto" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2E9E6B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div><div style="font-size:9px;color:var(--text-secondary);margin-top:3px;">左 2</div></div>
+                  <div style="flex:1;text-align:center;"><div style="aspect-ratio:3/4;border-radius:10px;background:#E6E8EC;position:relative;overflow:hidden;"><span style="position:absolute;left:0;bottom:0;width:100%;height:64%;background:rgba(194,24,91,.18);"></span></div><div style="font-size:9px;color:var(--brand-rose);font-weight:700;margin-top:3px;">右 1 · 64%</div></div>
+                  <div style="flex:1;text-align:center;"><div style="aspect-ratio:3/4;border-radius:10px;background:#E6E8EC;position:relative;overflow:hidden;"><span style="position:absolute;left:0;bottom:0;width:100%;height:20%;background:rgba(194,24,91,.18);"></span></div><div style="font-size:9px;color:var(--text-secondary);margin-top:3px;">右 2 · 队列</div></div>
+                </div>
+              </div>
+              <!-- offline banner -->
+              <div class="card" style="margin-top:12px;display:flex;gap:10px;align-items:center;background:var(--surface);border-style:dashed;">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22M16.7 11.7A6 6 0 0 0 12 10M5 13a10 10 0 0 1 4-2.5M8.5 16.5a5 5 0 0 1 7 0M12 20h.01"/></svg>
+                <div style="flex:1;font-size:11.5px;color:var(--text-secondary);"><b style="color:var(--text-primary)">无网络</b> — 已本地保存，恢复后自动上传</div>
+                <span class="chip" style="background:#fff;color:var(--text-secondary);border:1px solid var(--hair);">已排队 2</span>
+              </div>
+              <!-- degraded soft banner -->
+              <div class="card" style="margin-top:12px;display:flex;gap:10px;align-items:flex-start;background:#FBF3E2;border-color:#F0E2BE;">
+                <span style="font-size:15px;">⚠️</span><div style="font-size:11.5px;color:#8A6A1E;"><b>置信度降低：中等</b> —— 本周仅 1 次采集，周末前请再采集一次以获得稳定趋势。</div>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn">完成</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 E · SIS 结果与反馈 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:var(--sis-positive)">E</span>
+    <h2>流程 E · SIS 结果与行为反馈</h2>
+    <span class="note">F9 · App 简版 · SIS_delta 相对值框架，降低焦虑；查看即被动记录交互。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 18 · SIS 简版结果 ★ -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">18</span><span class="dnm">SIS 简版结果</span><span class="dtag light">浅色</span><span class="dtag star">★ 核心</span></div>
+      <p class="ddesc">SIS_delta 相对值 hero + 干预vs对照 sparkline + RAG 相关性洞察卡。</p>
+      <div class="seg" data-toggle="sis"><button class="on" data-v="pos">+ 改善</button><button data-v="zero">0 无差异</button><button data-v="neg">− 刺激</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-bottom:90px;overflow:auto;height:100%;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px;"><span style="font-size:15px;font-weight:800;">本周结果</span><span style="font-size:11.5px;color:var(--text-secondary);">Week 7 · 周四</span></div>
+              <!-- hero SIS delta -->
+              <div class="sis-hero card" style="text-align:center;padding:22px 16px;background:linear-gradient(160deg,#fff,#EAF6F0);border-color:#CBE9DA;">
+                <div style="font-size:12px;color:var(--text-secondary);font-weight:600;">相对对照侧 · SIS_delta</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0 2px;">
+                  <span class="sis-big" style="font-size:54px;font-weight:800;letter-spacing:-.02em;color:var(--sis-positive);line-height:1;">+3</span>
+                  <span class="sis-arrow"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#2E9E6B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+                </div>
+                <div class="sis-tag" style="font-size:13px;font-weight:700;color:var(--sis-positive);">vs 对照侧 · 改善更快</div>
+                <div class="sis-sub" style="font-size:12px;color:var(--text-secondary);margin-top:8px;">你的干预侧正在比对照侧更快改善。这是相对比较，并非绝对评分。</div>
+              </div>
+              <!-- mini compare -->
+              <div style="display:flex;gap:10px;margin-top:12px;">
+                <div class="card" style="flex:1;padding:13px;"><div style="font-size:10.5px;color:var(--brand-rose);font-weight:700;">干预侧（左）</div><div class="sis-iv" style="font-size:20px;font-weight:800;margin-top:2px;">68</div><div style="font-size:10px;color:var(--text-secondary);">综合指标</div></div>
+                <div class="card" style="flex:1;padding:13px;"><div style="font-size:10.5px;color:#3B6FD4;font-weight:700;">对照侧（右）</div><div class="sis-ct" style="font-size:20px;font-weight:800;margin-top:2px;">65</div><div style="font-size:10px;color:var(--text-secondary);">基线护理</div></div>
+              </div>
+              <!-- sparkline -->
+              <div class="card" style="margin-top:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:12.5px;font-weight:700;">26 周趋势</span><span style="display:flex;gap:11px;font-size:10px;"><span style="display:flex;align-items:center;gap:4px;color:var(--brand-rose);"><i style="width:9px;height:3px;border-radius:2px;background:var(--brand-rose);display:inline-block;"></i>干预</span><span style="display:flex;align-items:center;gap:4px;color:#3B6FD4;"><i style="width:9px;height:3px;border-radius:2px;background:#3B6FD4;display:inline-block;"></i>对照</span></span></div>
+                <svg viewBox="0 0 260 76" style="width:100%;height:76px;">
+                  <polyline points="2,58 30,55 58,52 86,48 114,45 142,40 170,36 198,31 226,27 256,22" fill="none" stroke="#C2185B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="2,60 30,59 58,58 86,56 114,55 142,54 170,53 198,52 226,51 256,50" fill="none" stroke="#3B6FD4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 3"/>
+                  <circle cx="256" cy="22" r="3.4" fill="#C2185B"/>
+                </svg>
+              </div>
+              <!-- MCS low warning (only show on demand via class; keep subtle persistent) -->
+              <div class="card" style="margin-top:12px;display:flex;gap:9px;align-items:center;background:#FBF3E2;border-color:#F0E2BE;padding:11px 13px;">
+                <span style="font-size:14px;">⚠️</span><div style="font-size:11px;color:#8A6A1E;">本周采集质量偏低，可能影响趋势解读。</div>
+              </div>
+              <!-- RAG insight -->
+              <div class="card" style="margin-top:12px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;"><span style="width:24px;height:24px;border-radius:7px;background:var(--brand-rose-tint);display:grid;place-items:center;font-size:13px;">🔬</span><span style="font-size:12.5px;font-weight:700;">研究洞察</span></div>
+                <div style="font-size:12px;color:var(--text-primary);line-height:1.6;">与 Brenner 的研究一致，<b>睡眠更好的周次</b>往往与更强的改善相关。</div>
+                <div style="margin-top:10px;"><span class="chip" style="background:var(--surface);color:var(--text-secondary);">📄 查看来源</span></div>
+              </div>
+            </div>
+            <div class="scroll-fade" style="bottom:78px;"></div>
+          </div>
+          <nav class="tabbar">
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span class="l">首页</span></div>
+            <div class="tb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg><span class="l">洞察</span></div>
+            <div class="tb-cap"><div class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg></div><span class="l">采集</span></div>
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span class="l">我的</span></div>
+          </nav>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 19 · 行为操作 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">19</span><span class="dnm">行为操作</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">SIS 结果后的低压力操作：换产品 / 暂停研究 / 保持现状。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body" style="background:rgba(20,21,26,.32);">
+            <!-- dimmed underlying result peeking at top -->
+            <div style="padding:16px 20px 0;opacity:.5;">
+              <div style="font-size:15px;font-weight:800;">本周结果 · +3 ↑</div>
+              <div style="font-size:12px;color:var(--text-secondary);">干预侧改善更快</div>
+            </div>
+            <!-- action sheet -->
+            <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.18);padding:8px 20px 26px;">
+              <div style="width:40px;height:5px;border-radius:999px;background:#E0E2E7;margin:0 auto 16px;"></div>
+              <div style="font-size:16px;font-weight:800;text-align:center;">接下来想做什么？</div>
+              <div style="font-size:12px;color:var(--text-secondary);text-align:center;margin-top:3px;margin-bottom:18px;">没有压力 —— 一切由你掌控。</div>
+              <!-- change product -->
+              <div class="card" style="display:flex;align-items:center;gap:13px;margin-bottom:11px;border-color:var(--hair);">
+                <span style="width:42px;height:42px;border-radius:12px;background:var(--brand-rose-tint);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C2185B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg></span>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:700;">换产品</div><div style="font-size:11.5px;color:var(--text-secondary);">结束当前方案，按面侧添加新产品</div></div>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <!-- pause study -->
+              <div class="card" style="display:flex;align-items:center;gap:13px;margin-bottom:11px;border-color:var(--hair);">
+                <span style="width:42px;height:42px;border-radius:12px;background:var(--surface);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></span>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:700;">暂停研究</div><div style="font-size:11.5px;color:var(--text-secondary);">冻结 26 周计数，随时可恢复</div></div>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+              <button class="pill-btn ghost" style="margin-top:5px;">保持现状，继续</button>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>DrRuby · §3 逐屏界面（核心屏 9 屏）· 设计基线 app-prompts v1.0 / MVP2.md · 延续 §2 信息架构视觉语言</span>
+    <span>下一批：Onboarding 屏 1–9 · 其余 17/20–24</span>
+  </footer>
+
+</main>
+
+<script>
+  // —— 多状态切换器 ——
+  function bindToggle(name, apply){
+    var seg = document.querySelector('[data-toggle="'+name+'"]');
+    if(!seg) return;
+    seg.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        seg.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+        apply(b.getAttribute('data-v'), seg);
+      });
+    });
+  }
+
+  // 屏 13 · AR 左/右
+  bindToggle('ar', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    phone.querySelectorAll('[data-show]').forEach(function(el){
+      el.classList.toggle('vis', el.getAttribute('data-show')===v);
+    });
+    var dot2 = phone.querySelector('.ar-dot2');
+    if(dot2) dot2.style.background = (v==='right') ? 'var(--brand-rose)' : '#3A3D44';
+  });
+
+  // 屏 14 · MCS High/Med/Low
+  var MCS = {
+    high:{color:'#43C58C', ring:'#2E9E6B', off:26,  label:'HIGH',   score:'92 / 100', emoji:'✓', head:'采集质量优秀', note:'光线是关键因素 —— 本次表现很好。'},
+    med: {color:'#E0A23A', ring:'#E0A23A', off:140, label:'MEDIUM', score:'71 / 100', emoji:'!', head:'采集质量中等', note:'可用，但光线略不足，趋势解读置信度略降。'},
+    low: {color:'#E8736F', ring:'#D14343', off:236, label:'LOW',    score:'48 / 100', emoji:'!', head:'采集质量偏低', note:'光线是关键因素 —— 本次偏暗。'}
+  };
+  bindToggle('mcs', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    var m = MCS[v];
+    phone.querySelector('.mcs-ring').setAttribute('stroke', m.ring);
+    phone.querySelector('.mcs-ring').setAttribute('stroke-dashoffset', m.off);
+    phone.querySelector('.mcs-label').textContent = m.label;
+    phone.querySelector('.mcs-label').style.color = m.color;
+    phone.querySelector('.mcs-score').textContent = m.score;
+    phone.querySelector('.mcs-emoji').textContent = m.emoji;
+    phone.querySelector('.mcs-emoji').style.color = m.color;
+    phone.querySelector('.mcs-head').textContent = m.head;
+    phone.querySelector('.mcs-note').textContent = m.note;
+    phone.querySelector('.mcs-tip').style.display = (v==='low') ? 'flex' : 'none';
+  });
+
+  // 屏 18 · SIS +/0/−
+  var SIS = {
+    pos: {big:'+3', color:'var(--sis-positive)', arrow:'up',   tag:'vs 对照侧 · 改善更快', sub:'你的干预侧正在比对照侧更快改善。这是相对比较，并非绝对评分。', iv:'68', ct:'65', bg:'linear-gradient(160deg,#fff,#EAF6F0)', bd:'#CBE9DA'},
+    zero:{big:'0',  color:'var(--sis-zero)',     arrow:'flat', tag:'vs 对照侧 · 暂无差异', sub:'目前两侧改善速度接近。研究仍在早期，继续观察即可。', iv:'66', ct:'66', bg:'linear-gradient(160deg,#fff,#F1F2F4)', bd:'#E2E4E8'},
+    neg: {big:'−2', color:'var(--sis-negative)',  arrow:'down', tag:'vs 对照侧 · 可能刺激', sub:'干预侧改善略慢于对照侧，可能存在轻微刺激。可考虑调整产品。', iv:'63', ct:'65', bg:'linear-gradient(160deg,#fff,#FBEFE9)', bd:'#F3D9CC'}
+  };
+  var ARROWS = {
+    up:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#2E9E6B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    flat:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#9AA0A6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
+    down:'<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#E0613A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>'
+  };
+  bindToggle('sis', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    var s = SIS[v];
+    var hero = phone.querySelector('.sis-hero');
+    hero.style.background = s.bg; hero.style.borderColor = s.bd;
+    var big = phone.querySelector('.sis-big'); big.textContent = s.big; big.style.color = s.color;
+    phone.querySelector('.sis-arrow').innerHTML = ARROWS[s.arrow];
+    var tag = phone.querySelector('.sis-tag'); tag.textContent = s.tag; tag.style.color = s.color;
+    phone.querySelector('.sis-sub').textContent = s.sub;
+    phone.querySelector('.sis-iv').textContent = s.iv;
+    phone.querySelector('.sis-ct').textContent = s.ct;
+  });
+</script>
+</body>
+</html>

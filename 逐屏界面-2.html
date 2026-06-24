@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DrRuby · §3 逐屏界面（第 2 批 · Onboarding + 设置流）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* §1 设计 Token */
+    --brand-rose:#C2185B;
+    --brand-rose-tint:#F8D7E3;
+    --text-primary:#1F2024;
+    --text-secondary:#6B7280;
+    --surface:#F5F6F8;
+    --sis-positive:#2E9E6B;
+    --sis-zero:#9AA0A6;
+    --sis-negative:#E0613A;
+    --mcs-high:#2E9E6B;
+    --mcs-med:#E0A23A;
+    --mcs-low:#D14343;
+    --dark:#16171B;
+    /* Brenner verdict 4 态 */
+    --v-keep:#2E9E6B;
+    --v-stop:#D14343;
+    --v-review:#E0A23A;
+    --v-caution:#B98A5E;
+
+    --board-bg:#ECEEF2;
+    --card:#FFFFFF;
+    --hair:#E5E7EB;
+    --hair-soft:#EEF0F3;
+    --shadow-sm:0 1px 2px rgba(16,18,28,.05), 0 1px 3px rgba(16,18,28,.06);
+    --shadow-md:0 6px 18px rgba(16,18,28,.08), 0 2px 6px rgba(16,18,28,.05);
+    --shadow-lg:0 18px 48px rgba(16,18,28,.16);
+    --font:"Inter",-apple-system,"SF Pro Text","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font);
+    background:var(--board-bg);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  :lang(zh){line-height:1.7;}
+  h1,h2,h3,h4,h5,p{margin:0;}
+  .board{max-width:1480px;margin:0 auto;padding:48px 40px 110px;}
+
+  /* ——— Header ——— */
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:14px;}
+  .head .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:10px;}
+  .head h1{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .head .sub{font-size:15px;color:var(--text-secondary);margin-top:8px;max-width:620px;}
+  .head .meta{font-size:12.5px;color:var(--text-secondary);text-align:right;line-height:1.9;}
+  .head .meta b{color:var(--text-primary);font-weight:600;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 8px;padding-top:22px;border-top:1px solid var(--hair);}
+  .swatch{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-secondary);background:var(--card);border:1px solid var(--hair);border-radius:999px;padding:5px 11px 5px 6px;box-shadow:var(--shadow-sm);}
+  .swatch i{width:14px;height:14px;border-radius:5px;display:inline-block;}
+  .swatch b{color:var(--text-primary);font-weight:600;}
+  .scope-note{font-size:12.5px;color:var(--text-secondary);margin:14px 0 40px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:11px 15px;box-shadow:var(--shadow-sm);}
+  .scope-note b{color:var(--text-primary);}
+
+  /* ——— Section frame ——— */
+  .section{margin-bottom:30px;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin:46px 0 26px;}
+  .sec-badge{font-size:14px;font-weight:800;color:#fff;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;}
+  .sec-head h2{font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  .sec-head .note{font-size:13px;color:var(--text-secondary);}
+
+  /* ——— device rail ——— */
+  .rail{display:flex;flex-wrap:wrap;gap:34px 30px;align-items:flex-start;}
+  .device{display:flex;flex-direction:column;gap:13px;width:344px;}
+  .dlabel{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .dlabel .dno{font-size:12px;font-weight:800;color:#fff;background:var(--text-primary);border-radius:7px;min-width:30px;height:24px;display:grid;place-items:center;flex:none;padding:0 6px;}
+  .dlabel .dnm{font-size:14px;font-weight:700;}
+  .dlabel .dtag{font-size:10px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:2px 8px;}
+  .dtag.light{background:#EEF4FF;color:#3B6FD4;}
+  .dtag.dark{background:var(--dark);color:#fff;}
+  .dtag.star{background:var(--brand-rose-tint);color:var(--brand-rose);}
+  .ddesc{font-size:11.5px;color:var(--text-secondary);margin-top:-6px;line-height:1.55;}
+
+  /* segmented state toggle above a phone */
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:3px;gap:3px;box-shadow:var(--shadow-sm);align-self:flex-start;}
+  .seg button{font-family:var(--font);font-size:11.5px;font-weight:600;color:var(--text-secondary);background:transparent;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .seg button.on{background:var(--brand-rose);color:#fff;box-shadow:0 3px 8px rgba(194,24,91,.28);}
+  .seg.dk button.on{background:#33353C;}
+
+  /* ——— phone frame ——— */
+  .phone{width:344px;height:728px;background:#0E0F12;border-radius:46px;padding:11px;box-shadow:var(--shadow-lg);position:relative;flex:none;}
+  .screen{position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;}
+  .screen.dk{background:#0B0C0F;color:#fff;}
+  .notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:118px;height:27px;background:#0E0F12;border-radius:0 0 16px 16px;z-index:30;}
+  /* status bar */
+  .sbar{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 30px;font-size:13px;font-weight:600;z-index:20;}
+  .sbar .ic{display:flex;gap:5px;align-items:center;}
+  .sbar .ic svg{width:16px;height:16px;}
+  .screen.dk .sbar{color:#fff;}
+  /* home indicator */
+  .homeind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:999px;background:#111317;opacity:.85;z-index:25;}
+  .screen.dk .homeind{background:#fff;opacity:.6;}
+
+  .body{flex:1;overflow:hidden;position:relative;}
+  .pad{padding:6px 20px 0;}
+
+  /* generic UI primitives */
+  .h-title{font-size:22px;font-weight:800;letter-spacing:-.01em;}
+  .h-sub{font-size:13px;color:var(--text-secondary);margin-top:5px;}
+  .screen.dk .h-sub{color:#9DA2AC;}
+  .appbar{display:flex;align-items:center;gap:12px;padding:4px 20px 8px;}
+  .appbar .back{width:30px;height:30px;border-radius:9px;background:rgba(0,0,0,.04);display:grid;place-items:center;color:var(--text-primary);flex:none;}
+  .screen.dk .appbar .back{background:rgba(255,255,255,.08);color:#fff;}
+  .appbar .at{font-size:15px;font-weight:700;}
+  .appbar .step{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--text-secondary);}
+
+  .card{background:var(--card);border-radius:18px;box-shadow:var(--shadow-sm);padding:16px;border:1px solid var(--hair-soft);}
+  .screen.dk .card{background:#15171C;border-color:#23262E;box-shadow:none;}
+  .pill-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--brand-rose);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;border:none;border-radius:999px;padding:15px;box-shadow:0 8px 18px rgba(194,24,91,.32);cursor:pointer;}
+  .pill-btn.ghost{background:transparent;color:var(--text-primary);box-shadow:none;border:1px solid var(--hair);}
+  .pill-btn.disabled{background:#E7E8EC;color:#A6AAB2;box-shadow:none;cursor:not-allowed;}
+  .pill-btn svg{width:18px;height:18px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 11px;}
+  .chip i{width:7px;height:7px;border-radius:999px;flex:none;}
+
+  /* form primitives */
+  .inp{width:100%;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:13px 14px;font-size:14px;font-family:var(--font);color:var(--text-primary);display:flex;align-items:center;gap:10px;}
+  .inp .ph{color:#A6AAB2;}
+  .lbl{font-size:12px;font-weight:700;color:var(--text-secondary);margin:14px 0 7px;}
+  .selchip{font-size:12.5px;font-weight:600;border-radius:999px;padding:8px 14px;border:1px solid var(--hair);background:var(--card);color:var(--text-secondary);}
+  .selchip.on{background:var(--brand-rose-tint);border-color:var(--brand-rose);color:var(--brand-rose);font-weight:700;}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:var(--text-primary);font-size:14px;font-weight:600;border:1px solid var(--hair);border-radius:999px;padding:13px;cursor:pointer;}
+
+  /* grouped settings list */
+  .glist{background:var(--card);border-radius:16px;border:1px solid var(--hair-soft);box-shadow:var(--shadow-sm);overflow:hidden;}
+  .grow{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--hair-soft);}
+  .grow:last-child{border-bottom:none;}
+  .grow .gi{width:30px;height:30px;border-radius:9px;background:var(--surface);display:grid;place-items:center;flex:none;color:var(--text-secondary);}
+  .grow .gt{flex:1;font-size:13.5px;font-weight:600;}
+  .grow .gv{font-size:12px;color:var(--text-secondary);}
+  .grow .chev{color:#C2C6CE;flex:none;}
+
+  /* tab bar */
+  .tabbar{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--hair-soft);padding:7px 8px 22px;display:flex;align-items:flex-end;justify-content:space-around;z-index:15;}
+  .tb{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sis-zero);flex:1;padding-top:4px;}
+  .tb svg{width:23px;height:23px;}
+  .tb .l{font-size:10px;font-weight:600;}
+  .tb.active{color:var(--brand-rose);}
+  .tb-cap{flex:0 0 auto;width:60px;position:relative;}
+  .tb-cap .cb{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;background:var(--brand-rose);color:#fff;display:grid;place-items:center;box-shadow:0 10px 20px rgba(194,24,91,.4);border:4px solid #fff;}
+  .tb-cap .cb svg{width:25px;height:25px;}
+  .tb-cap .l{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);font-size:9.5px;font-weight:700;color:var(--brand-rose);white-space:nowrap;}
+
+  .scroll-fade{position:absolute;left:0;right:0;bottom:0;height:46px;background:linear-gradient(transparent,var(--surface));pointer-events:none;z-index:10;}
+
+  /* tier cards */
+  .tier{border:1.5px solid var(--hair);border-radius:16px;padding:13px 14px;background:var(--card);position:relative;}
+  .tier.cur{border-color:var(--brand-rose);box-shadow:0 6px 16px rgba(194,24,91,.14);}
+  .tier .cur-tag{position:absolute;top:-9px;right:13px;font-size:9.5px;font-weight:800;color:#fff;background:var(--brand-rose);border-radius:999px;padding:2px 9px;display:none;}
+  .tier.cur .cur-tag{display:block;}
+
+  .footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--hair);font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+
+  /* state-variant visibility helpers */
+  [data-show]{display:none;}
+  [data-show].vis{display:block;}
+  [data-showflex].vis{display:flex;}
+</style>
+</head>
+<body>
+<main class="board">
+
+  <!-- ============ HEADER ============ -->
+  <header class="head">
+    <div>
+      <div class="eyebrow">DrRuby · §3 逐屏提示词 → 界面稿 · 第 2 批</div>
+      <h1>Onboarding 入组 + 设置流</h1>
+      <p class="sub">承接第 1 批核心采集流。本批覆盖<b> 流程 A Onboarding（屏 1–9）</b>，以及<b> 穿戴(17)/产品(20)/里程碑(21)/订阅(22)/隐私(23)/个人中心(24)</b>，共 15 屏。延续 §1 token 与第 1 批组件、分段切换器系统。逻辑帧 393×852，全部浅色（入组与设置流）。</p>
+    </div>
+    <div class="meta">
+      基线：<b>app-prompts v1.0</b> · <b>MVP2.md</b><br/>
+      同板：<b>逐屏界面.html</b>（核心屏 9）<br/>
+      品牌色 <b style="color:var(--brand-rose)">Ruby #C2185B</b>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span class="swatch"><i style="background:var(--brand-rose)"></i><b>Rose</b> 主操作/品牌</span>
+    <span class="swatch"><i style="background:var(--v-keep)"></i><b>keep</b> 保留</span>
+    <span class="swatch"><i style="background:var(--v-stop)"></i><b>stop</b> 停用</span>
+    <span class="swatch"><i style="background:var(--v-review)"></i><b>review</b> 复核</span>
+    <span class="swatch"><i style="background:var(--v-caution)"></i><b>caution</b> 谨慎</span>
+    <span class="swatch"><i style="background:#3B6FD4"></i><b>Control</b> 对照侧/基线</span>
+  </div>
+  <p class="scope-note">📐 <b>多状态说明</b>：屏 7（Brenner 四色 verdict）、屏 8 & 17（平台 iOS/Health Connect 切换）、屏 22（Free/Paid 视角门控）顶部带<b>分段切换器</b>，点击预览不同状态；其余为单一精修稿。入组流（1–9）为一次性、线性、无底部 Tab。</p>
+
+  <!-- ============ 流程 A · ONBOARDING ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#7C5CFC">A</span>
+    <h2>流程 A · Onboarding 一次性入组</h2>
+    <span class="note">F1 · 线性 1→9：欢迎 → 注册 → 研究说明 → 问卷 → 知情同意签字 → 选侧 → 补剂快评 → 健康授权 → 完成。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 1 · 欢迎 / 启动页 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">1</span><span class="dnm">欢迎 / 启动页</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">品牌字标 + ruby motif · 一句价值主张 · 玫瑰渐变褪白。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen" style="background:linear-gradient(180deg,#F8D7E3 0%,#FCEAF1 38%,#fff 78%);">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body" style="display:flex;flex-direction:column;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 28px;text-align:center;">
+              <!-- ruby motif -->
+              <svg viewBox="0 0 64 64" width="68" height="68" style="margin-bottom:20px;filter:drop-shadow(0 8px 18px rgba(194,24,91,.32));">
+                <polygon points="32,6 54,24 32,58 10,24" fill="#C2185B"/>
+                <polygon points="32,6 54,24 32,30 10,24" fill="#E0457E"/>
+                <polygon points="10,24 32,30 32,58" fill="#A30E4C"/>
+                <polygon points="54,24 32,30 32,58" fill="#9A0B47"/>
+              </svg>
+              <div style="font-size:36px;font-weight:800;letter-spacing:-.03em;">DrRuby</div>
+              <div style="font-size:15px;color:var(--text-primary);font-weight:600;margin-top:18px;line-height:1.6;">26 周 Split-Face 护肤科学 ——<br/>看清究竟<b style="color:var(--brand-rose)">什么对你的皮肤真的有效</b>。</div>
+            </div>
+            <div style="padding:0 24px 30px;display:flex;flex-direction:column;gap:14px;align-items:center;">
+              <button class="pill-btn">开始</button>
+              <span style="font-size:13.5px;font-weight:600;color:var(--text-secondary);">我已有账号</span>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 2 · 注册 / 登录 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">2</span><span class="dnm">注册 / 登录</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">邮箱+密码 · Google 登录 · 研究参与者角色说明 · 条款链接。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div></div>
+            <div class="pad">
+              <div class="h-title">创建账号</div>
+              <div class="h-sub">加入 26 周 Split-Face 研究。</div>
+              <div class="lbl" style="margin-top:22px;">邮箱</div>
+              <div class="inp"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><span class="ph">you@example.com</span></div>
+              <div class="lbl">密码</div>
+              <div class="inp"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span style="letter-spacing:3px;">••••••••</span><svg style="margin-left:auto" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <!-- role note -->
+              <div style="display:flex;gap:9px;align-items:flex-start;background:#EEF4FF;border:1px solid #DCE7FB;border-radius:12px;padding:11px 13px;margin-top:16px;">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#3B6FD4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <div style="font-size:11.5px;color:#3B6FD4;">此账号为<b>研究参与者</b>账号（区别于诊所账号）。</div>
+              </div>
+              <button class="pill-btn" style="margin-top:18px;">创建账号</button>
+              <div style="display:flex;align-items:center;gap:12px;margin:16px 0;"><span style="flex:1;height:1px;background:var(--hair);"></span><span style="font-size:11px;color:var(--text-secondary);">或</span><span style="flex:1;height:1px;background:var(--hair);"></span></div>
+              <button class="gbtn"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5Z"/><path fill="#34A853" d="M12 23c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M6.2 14.6a6.6 6.6 0 0 1 0-4.2V7.7H2.7a11 11 0 0 0 0 9.6l3.5-2.7Z"/><path fill="#EA4335" d="M12 5.5c1.5 0 2.9.5 4 1.5l3-3A11 11 0 0 0 2.7 7.7l3.5 2.7C7 7.3 9.3 5.5 12 5.5Z"/></svg>使用 Google 继续</button>
+              <div style="text-align:center;font-size:12.5px;color:var(--text-secondary);margin-top:18px;">已有账号？<b style="color:var(--brand-rose)">登录</b></div>
+              <div style="text-align:center;font-size:10.5px;color:#A6AAB2;margin-top:14px;">继续即表示同意 <u>服务条款</u> 与 <u>隐私政策</u></div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 3 · 入组说明 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">3</span><span class="dnm">入组说明（研究是什么）</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">左右分脸图解 · 干预侧 vs 对照侧 · 3 步说明 · SIS_delta 相对差。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-top:14px;">
+              <div class="h-title">这项研究怎么做</div>
+              <div class="h-sub">两侧脸、不同护理，比较相对差异。</div>
+              <!-- split face diagram -->
+              <div class="card" style="margin-top:16px;padding:18px;">
+                <svg viewBox="0 0 220 150" style="width:100%;height:auto;">
+                  <defs></defs>
+                  <path d="M110 14 C150 14 168 46 168 80 C168 116 142 138 110 138 C78 138 52 116 52 80 C52 46 70 14 110 14 Z" fill="#F7EFEA" stroke="#E6DDD6" stroke-width="1.5"/>
+                  <!-- left half tint (intervention) -->
+                  <path d="M110 14 C78 14 52 46 52 80 C52 116 78 138 110 138 Z" fill="rgba(194,24,91,.10)"/>
+                  <line x1="110" y1="12" x2="110" y2="140" stroke="#C8BEB6" stroke-width="1.5" stroke-dasharray="4 4"/>
+                  <circle cx="86" cy="74" r="4" fill="#7A6A5E"/><circle cx="134" cy="74" r="4" fill="#7A6A5E"/>
+                  <path d="M96 104 Q110 112 124 104" fill="none" stroke="#7A6A5E" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div style="display:flex;gap:10px;margin-top:8px;">
+                  <div style="flex:1;text-align:center;"><span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">干预侧</span><div style="font-size:10.5px;color:var(--text-secondary);margin-top:5px;">测试产品</div></div>
+                  <div style="flex:1;text-align:center;"><span class="chip" style="background:#EEF4FF;color:#3B6FD4;">对照侧</span><div style="font-size:10.5px;color:var(--text-secondary);margin-top:5px;">基线护理</div></div>
+                </div>
+              </div>
+              <!-- 3 steps -->
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:11px;">
+                <div style="display:flex;gap:12px;align-items:center;"><span style="width:26px;height:26px;border-radius:50%;background:var(--brand-rose);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;flex:none;">1</span><span style="font-size:13px;">两侧脸使用<b>不同</b>护理方案</span></div>
+                <div style="display:flex;gap:12px;align-items:center;"><span style="width:26px;height:26px;border-radius:50%;background:var(--brand-rose);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;flex:none;">2</span><span style="font-size:13px;">每周拍照 <b>2 次</b></span></div>
+                <div style="display:flex;gap:12px;align-items:center;"><span style="width:26px;height:26px;border-radius:50%;background:var(--brand-rose);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;flex:none;">3</span><span style="font-size:13px;">26 周内测量<b>相对差异（SIS_delta）</b></span></div>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn">继续</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 4 · 入组问卷（多步） -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">4</span><span class="dnm">入组问卷（多步表单）</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">步骤 2/6「肌肤档案」· 肤质 chips · Fitzpatrick I–VI · 激素状态 · 绝经年数条件步进器。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="step">第 2 步 / 6</span></div>
+            <div class="pad">
+              <!-- step bar -->
+              <div style="display:flex;gap:5px;margin-bottom:4px;">
+                <span style="flex:1;height:5px;border-radius:3px;background:var(--brand-rose);"></span>
+                <span style="flex:1;height:5px;border-radius:3px;background:var(--brand-rose);"></span>
+                <span style="flex:1;height:5px;border-radius:3px;background:#E9EBEF;"></span>
+                <span style="flex:1;height:5px;border-radius:3px;background:#E9EBEF;"></span>
+                <span style="flex:1;height:5px;border-radius:3px;background:#E9EBEF;"></span>
+                <span style="flex:1;height:5px;border-radius:3px;background:#E9EBEF;"></span>
+              </div>
+              <div style="font-size:10.5px;color:#A6AAB2;margin-bottom:10px;">基本信息 · <b style="color:var(--brand-rose)">肌肤档案</b> · 护肤习惯 · 关注目标 · 采集时段 · 确认</div>
+              <div class="h-title" style="font-size:20px;">你的肌肤档案</div>
+              <!-- skin type -->
+              <div class="lbl">肤质</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span class="selchip">干性</span><span class="selchip on">混合性</span><span class="selchip">油性</span><span class="selchip">敏感性</span>
+              </div>
+              <!-- fitzpatrick -->
+              <div class="lbl">Fitzpatrick 光型（I–VI）</div>
+              <div style="display:flex;gap:6px;">
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#F7E2D0;"></div><div style="font-size:10px;color:var(--text-secondary);margin-top:4px;">I</div></div>
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#F0CBA8;"></div><div style="font-size:10px;color:var(--text-secondary);margin-top:4px;">II</div></div>
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#E3B38C;border:2.5px solid var(--brand-rose);"></div><div style="font-size:10px;color:var(--brand-rose);font-weight:800;margin-top:4px;">III</div></div>
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#C68A63;"></div><div style="font-size:10px;color:var(--text-secondary);margin-top:4px;">IV</div></div>
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#8D5A3C;"></div><div style="font-size:10px;color:var(--text-secondary);margin-top:4px;">V</div></div>
+                <div style="flex:1;text-align:center;"><div style="height:34px;border-radius:9px;background:#5A3825;"></div><div style="font-size:10px;color:var(--text-secondary);margin-top:4px;">VI</div></div>
+              </div>
+              <!-- hormonal status -->
+              <div class="lbl">激素状态</div>
+              <div class="inp" style="justify-content:space-between;"><span>围绝经期</span><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+              <!-- conditional stepper -->
+              <div style="margin-top:12px;background:var(--brand-rose-tint);border:1px solid #F1C6D6;border-radius:13px;padding:12px 14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-size:12.5px;font-weight:700;color:var(--brand-rose);">绝经年数 <span style="font-weight:500;">· 因激素状态显示</span></div>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:28px;height:28px;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:18px;color:var(--brand-rose);font-weight:700;">−</span>
+                    <span style="font-size:17px;font-weight:800;min-width:18px;text-align:center;">3</span>
+                    <span style="width:28px;height:28px;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:16px;color:var(--brand-rose);font-weight:700;">+</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;display:flex;gap:12px;">
+              <button class="pill-btn ghost" style="flex:0 0 96px;">上一步</button>
+              <button class="pill-btn" style="flex:1;">下一步</button>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 5 · 知情同意 + 禁止清单 + 签字 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">5</span><span class="dnm">知情同意 + 禁止清单 + 签字</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">可滚动同意正文 · 琥珀「研究期间请勿」清单 · 必填签字 + 时间戳 · 按钮锁定至已签。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><span class="at" style="margin-left:4px;">你的 26 周承诺</span><span class="step">入组 5 / 9</span></div>
+            <div class="pad" style="padding-bottom:96px;overflow:auto;height:calc(100% - 40px);">
+              <!-- consent body -->
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.75;border-bottom:1px solid var(--hair-soft);padding-bottom:14px;">
+                你将参与一项为期 26 周的 Split-Face 护肤观察研究。你的影像、特征与 SIS 结果将被安全存储并用于研究分析。你可随时暂停或退出。完整说明见知情同意书全文……
+              </div>
+              <!-- DO NOT card -->
+              <div class="card" style="margin-top:14px;background:#FDF8EC;border-color:#F3E6C2;">
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#B07A14;margin-bottom:10px;">⚠️ 研究期间请勿</div>
+                <div style="display:flex;flex-direction:column;gap:9px;font-size:12px;color:#7A5A12;">
+                  <div style="display:flex;gap:8px;"><span>✕</span><span>进行激光 / 医美光电项目</span></div>
+                  <div style="display:flex;gap:8px;"><span>✕</span><span>做化学换肤</span></div>
+                  <div style="display:flex;gap:8px;"><span>✕</span><span>自行更换 / 调整产品</span></div>
+                  <div style="display:flex;gap:8px;"><span>✕</span><span>对照侧<b>仅</b>使用基线护理</span></div>
+                </div>
+              </div>
+              <!-- ack -->
+              <div style="display:flex;align-items:center;gap:11px;margin-top:14px;">
+                <span style="width:24px;height:24px;border-radius:7px;background:var(--brand-rose);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span style="font-size:12px;">我已阅读并理解上述内容</span>
+              </div>
+              <!-- signature -->
+              <div class="lbl">签字（手写或输入全名）</div>
+              <div style="background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:14px;">
+                <div style="font-family:'Brush Script MT','Segoe Script',cursive;font-size:26px;color:var(--text-primary);">Mia Chen</div>
+                <div style="height:1px;background:var(--hair-soft);margin:8px 0 6px;"></div>
+                <div style="font-size:10.5px;color:var(--text-secondary);">签署于 2026-06-24 09:41</div>
+              </div>
+            </div>
+            <div class="scroll-fade" style="bottom:84px;"></div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>我同意并签字</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 6 · 干预侧选择 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">6</span><span class="dnm">干预侧选择（不可改）</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">正面分脸 · 左/右单选（镜像感知）· 协议图解 · 注册后不可更改警告。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="step">入组 6 / 9</span></div>
+            <div class="pad" style="padding-top:6px;">
+              <div class="h-title" style="font-size:20px;">选择你的干预侧</div>
+              <div class="h-sub">测试产品用在此侧，另一侧自动成为对照侧。</div>
+              <!-- selectable cards -->
+              <div style="display:flex;gap:12px;margin-top:18px;">
+                <div style="flex:1;border:2px solid var(--brand-rose);border-radius:16px;padding:14px 10px;text-align:center;background:#FCEFF4;">
+                  <svg viewBox="0 0 80 96" style="width:62px;height:auto;"><path d="M40 6 C58 6 66 26 66 46 C66 70 56 90 40 90 C24 90 14 70 14 46 C14 26 22 6 40 6Z" fill="#F7EFEA" stroke="#E6DDD6" stroke-width="1.5"/><path d="M40 6 C24 6 14 26 14 46 C14 70 24 90 40 90Z" fill="rgba(194,24,91,.16)"/><line x1="40" y1="6" x2="40" y2="90" stroke="#C8BEB6" stroke-width="1.4" stroke-dasharray="3 3"/></svg>
+                  <div style="font-size:14px;font-weight:800;margin-top:6px;color:var(--brand-rose);">左脸</div>
+                  <div style="font-size:10.5px;color:var(--text-secondary);">干预侧</div>
+                  <span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--brand-rose);margin-top:8px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                </div>
+                <div style="flex:1;border:1.5px solid var(--hair);border-radius:16px;padding:14px 10px;text-align:center;background:var(--card);">
+                  <svg viewBox="0 0 80 96" style="width:62px;height:auto;"><path d="M40 6 C58 6 66 26 66 46 C66 70 56 90 40 90 C24 90 14 70 14 46 C14 26 22 6 40 6Z" fill="#F7EFEA" stroke="#E6DDD6" stroke-width="1.5"/><path d="M40 6 C56 6 66 26 66 46 C66 70 56 90 40 90Z" fill="rgba(59,111,212,.13)"/><line x1="40" y1="6" x2="40" y2="90" stroke="#C8BEB6" stroke-width="1.4" stroke-dasharray="3 3"/></svg>
+                  <div style="font-size:14px;font-weight:800;margin-top:6px;color:var(--text-secondary);">右脸</div>
+                  <div style="font-size:10.5px;color:var(--text-secondary);">将成为对照侧</div>
+                  <span style="display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid var(--hair);margin-top:8px;"></span>
+                </div>
+              </div>
+              <!-- protocol diagram note -->
+              <div class="card" style="margin-top:14px;display:flex;gap:10px;align-items:flex-start;background:#EEF4FF;border-color:#DCE7FB;">
+                <span style="font-size:15px;">🧪</span><div style="font-size:11.5px;color:#3B6FD4;">Split-Face 协议：干预侧叠加测试产品，对照侧仅用标准基线护理，二者相减得到 SIS_delta。</div>
+              </div>
+              <!-- warning -->
+              <div style="display:flex;gap:9px;align-items:flex-start;margin-top:12px;background:#FBF3E2;border:1px solid #F0E2BE;border-radius:12px;padding:11px 13px;">
+                <span style="font-size:14px;">🔒</span><div style="font-size:11.5px;color:#8A6A1E;"><b>注册后不可更改。</b>另一侧将自动作为你的对照侧。</div>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn">确认干预侧</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 7 · EvaluateMyStack 补剂快评 ★toggle -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">7</span><span class="dnm">EvaluateMyStack 补剂快评</span><span class="dtag light">浅色</span><span class="dtag star">4 色</span></div>
+      <p class="ddesc">可搜索补剂列表 · 实时 Brenner verdict（keep/stop/review/caution）· 顶部计数。</p>
+      <div class="seg" data-toggle="verdict"><button class="on" data-v="all">全部</button><button data-v="keep">keep</button><button data-v="stop">stop</button><button data-v="review">review</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">补剂快评</span><span class="step">已选 <b style="color:var(--brand-rose)">4</b> 项</span></div>
+            <div class="pad">
+              <div class="inp" style="margin-bottom:14px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-3.5-3.5"/></svg><span class="ph">搜索补剂…</span></div>
+              <!-- rows -->
+              <div class="vrow" data-vk="keep" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair-soft);">
+                <span style="width:22px;height:22px;border-radius:6px;background:var(--brand-rose);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">维生素 D3</div><div style="font-size:10.5px;color:var(--text-secondary);">2000 IU / 日</div></div>
+                <span class="chip" style="background:#E7F5EE;color:var(--v-keep);"><i style="background:var(--v-keep)"></i>keep 保留</span>
+              </div>
+              <div class="vrow" data-vk="keep" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair-soft);">
+                <span style="width:22px;height:22px;border-radius:6px;background:var(--brand-rose);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">Omega-3 鱼油</div><div style="font-size:10.5px;color:var(--text-secondary);">1000 mg / 日</div></div>
+                <span class="chip" style="background:#E7F5EE;color:var(--v-keep);"><i style="background:var(--v-keep)"></i>keep 保留</span>
+              </div>
+              <div class="vrow" data-vk="stop" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair-soft);">
+                <span style="width:22px;height:22px;border-radius:6px;background:var(--brand-rose);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">高剂量维生素 E</div><div style="font-size:10.5px;color:var(--text-secondary);">800 IU / 日</div></div>
+                <span class="chip" style="background:#FBE9E9;color:var(--v-stop);"><i style="background:var(--v-stop)"></i>stop 停用</span>
+              </div>
+              <div class="vrow" data-vk="review" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--hair-soft);">
+                <span style="width:22px;height:22px;border-radius:6px;background:var(--brand-rose);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;">胶原蛋白肽</div><div style="font-size:10.5px;color:var(--text-secondary);">10 g / 日</div></div>
+                <span class="chip" style="background:#FBF3E2;color:var(--v-review);"><i style="background:var(--v-review)"></i>review 复核</span>
+              </div>
+              <div class="vrow" data-vk="caution" style="display:flex;align-items:center;gap:11px;padding:11px 0;">
+                <span style="width:22px;height:22px;border-radius:6px;border:2px solid var(--hair);flex:none;"></span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;color:var(--text-secondary);">高剂量烟酸</div><div style="font-size:10.5px;color:var(--text-secondary);">未选</div></div>
+                <span class="chip" style="background:#F1ECE6;color:var(--v-caution);"><i style="background:var(--v-caution)"></i>caution</span>
+              </div>
+              <div style="font-size:10px;color:#A6AAB2;margin-top:12px;text-align:center;">评级依据 <b>Brenner</b> 专家研究 · 仅供参考</div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn">加入我的方案</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 8 · 健康数据授权 ★toggle platform -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">8</span><span class="dnm">健康数据授权引导</span><span class="dtag light">浅色</span><span class="dtag star">平台</span></div>
+      <p class="ddesc">平台感知：iOS=Apple Health / Android=Health Connect · 读取指标说明 · 其他设备 Coming soon。</p>
+      <div class="seg" data-toggle="health"><button class="on" data-v="ios">iOS</button><button data-v="android">Android</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-top:18px;">
+              <div style="display:flex;flex-direction:column;align-items:center;text-align:center;">
+                <div class="ha-icon" style="width:62px;height:62px;border-radius:18px;background:#FCE9EE;display:grid;place-items:center;">
+                  <svg viewBox="0 0 24 24" width="32" height="32" fill="#FF3B5C"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.7 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.3 0 5 3.5 3.3 7-2.3 4.4-9.3 9-9.3 9Z"/></svg>
+                </div>
+                <div class="ha-head" style="font-size:20px;font-weight:800;margin-top:14px;">连接 Apple Health</div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-top:6px;max-width:270px;">读取以下指标，帮助我们更好地解读你的皮肤结果。</div>
+              </div>
+              <!-- metrics -->
+              <div class="card" style="margin-top:18px;padding:6px 14px;">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair-soft);font-size:13px;"><span>💓</span>心率变异性 HRV</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair-soft);font-size:13px;"><span>😴</span>睡眠分期</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair-soft);font-size:13px;"><span>🌡️</span>皮肤温度</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair-soft);font-size:13px;"><span>❤️</span>静息心率</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair-soft);font-size:13px;"><span>🩸</span>血氧</div>
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13px;"><span>👣</span>步数</div>
+              </div>
+              <!-- other devices -->
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:16px 0 8px;">其他设备</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;opacity:.55;">
+                <span style="font-size:11.5px;border:1px solid var(--hair);border-radius:999px;padding:6px 11px;background:var(--card);">Oura <span style="color:#A6AAB2;">· Coming soon</span></span>
+                <span style="font-size:11.5px;border:1px solid var(--hair);border-radius:999px;padding:6px 11px;background:var(--card);">Dexcom <span style="color:#A6AAB2;">· Coming soon</span></span>
+                <span style="font-size:11.5px;border:1px solid var(--hair);border-radius:999px;padding:6px 11px;background:var(--card);">WHOOP <span style="color:#A6AAB2;">· soon</span></span>
+                <span style="font-size:11.5px;border:1px solid var(--hair);border-radius:999px;padding:6px 11px;background:var(--card);">Ultrahuman <span style="color:#A6AAB2;">· soon</span></span>
+              </div>
+            </div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;text-align:center;">
+              <button class="pill-btn ha-btn">连接 Apple Health</button>
+              <div style="font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-top:14px;">暂时跳过</div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 屏 9 · Onboarding 完成 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">9</span><span class="dnm">Onboarding 完成</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">平静庆祝勾选 · "You're enrolled!" · 引导 2 周 Washout · 进入下一流程。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen" style="background:linear-gradient(180deg,#fff 0%,#FCEAF1 100%);">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body" style="display:flex;flex-direction:column;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center;">
+              <div style="width:96px;height:96px;border-radius:50%;background:#fff;box-shadow:0 14px 34px rgba(194,24,91,.2);display:grid;place-items:center;position:relative;">
+                <span style="position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--brand-rose-tint);"></span>
+                <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#C2185B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              </div>
+              <div class="h-title" style="margin-top:26px;">你已成功入组！</div>
+              <div style="font-size:13.5px;color:var(--text-secondary);margin-top:10px;line-height:1.7;">接下来是 <b style="color:var(--text-primary)">2 周 Washout 洗脱期</b>，让两侧皮肤回到相同基线，再开始 Week 0 采集。</div>
+            </div>
+            <div style="padding:0 24px 30px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>开始我的 Washout</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 D · 穿戴设备 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#3B6FD4">D</span>
+    <h2>流程 D · 穿戴设备连接状态</h2>
+    <span class="note">F4 · 平台主健康源（Apple Health / Health Connect）已连接 + 同步指标 + 撤销时重连提示。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 17 · 健康数据连接状态 ★toggle platform -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">17</span><span class="dnm">健康数据连接状态</span><span class="dtag light">浅色</span><span class="dtag star">平台</span></div>
+      <p class="ddesc">顶部连接行随平台切换 · 已同步指标 · 撤销示例红条 · 未来设备 Coming soon。</p>
+      <div class="seg" data-toggle="conn"><button class="on" data-v="ios">iOS · Apple Health</button><button data-v="android">Android · Health Connect</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">已连接设备</span></div>
+            <div class="pad">
+              <!-- primary connected row -->
+              <div class="card" style="border-color:#CBE9DA;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span class="cn-icon" style="width:42px;height:42px;border-radius:12px;background:#FCE9EE;display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="22" height="22" fill="#FF3B5C"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.7 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.3 0 5 3.5 3.3 7-2.3 4.4-9.3 9-9.3 9Z"/></svg></span>
+                  <div style="flex:1;"><div class="cn-name" style="font-size:14px;font-weight:700;">Apple Health</div><div style="font-size:11px;color:var(--text-secondary);">2 小时前同步</div></div>
+                  <span class="chip" style="background:#E7F5EE;color:var(--sis-positive);"><i style="background:var(--sis-positive)"></i>已连接</span>
+                </div>
+                <div style="height:1px;background:var(--hair-soft);margin:13px 0;"></div>
+                <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">HRV</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">睡眠</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">皮肤温度</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">静息心率</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">血氧</span>
+                  <span class="chip" style="background:var(--surface);color:var(--text-secondary);">步数</span>
+                </div>
+              </div>
+              <!-- revoked example banner -->
+              <div style="display:flex;gap:10px;align-items:flex-start;background:#FBE9E9;border:1px solid #F1C9C9;border-radius:13px;padding:12px 14px;margin-top:14px;">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#D14343" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                <div style="flex:1;"><div style="font-size:12.5px;font-weight:700;color:#B23B3B;">需要重新连接</div><div style="font-size:11px;color:#A6504F;">权限被撤销时显示此状态。</div></div>
+                <span style="font-size:11.5px;font-weight:700;color:#fff;background:#D14343;border-radius:999px;padding:6px 12px;">重连</span>
+              </div>
+              <!-- future devices -->
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:18px 0 9px;">未来支持设备</div>
+              <div class="glist" style="opacity:.55;">
+                <div class="grow"><span class="gi">⌀</span><span class="gt">Oura Ring</span><span class="chip" style="background:var(--surface);color:#A6AAB2;">Coming soon</span></div>
+                <div class="grow"><span class="gi">◎</span><span class="gt">Dexcom / Libre</span><span class="chip" style="background:var(--surface);color:#A6AAB2;">Coming soon</span></div>
+                <div class="grow"><span class="gi">▭</span><span class="gt">WHOOP</span><span class="chip" style="background:var(--surface);color:#A6AAB2;">Coming soon</span></div>
+                <div class="grow"><span class="gi">◇</span><span class="gt">Ultrahuman</span><span class="chip" style="background:var(--surface);color:#A6AAB2;">Coming soon</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 F · 产品管理 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:var(--brand-rose)">F</span>
+    <h2>流程 F · 干预产品管理</h2>
+    <span class="note">F7 · 按 regime 跟踪（非每次）· 面侧标记 LEFT/RIGHT/BOTH · 基线 = Vehicle-Controlled。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 20 · 产品 regime 列表 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">20</span><span class="dnm">产品 regime 列表</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">按面侧产品（含 LEFT/RIGHT/BOTH 标记 + 时间段）+ 两侧基线区 + 11 类目选择器。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">我的产品</span></div>
+            <div class="pad" style="padding-bottom:96px;overflow:auto;height:calc(100% - 40px);">
+              <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin:2px 0 9px;">按面侧产品</div>
+              <!-- per-side product -->
+              <div class="card" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <span style="width:34px;height:34px;border-radius:10px;background:var(--brand-rose-tint);display:grid;place-items:center;flex:none;font-size:15px;">🧴</span>
+                  <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:13.5px;font-weight:700;">0.3% 视黄醇精华</span><span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">LEFT 左</span></div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">视黄醇 · 豌豆大小 · 每晚</div>
+                    <div style="font-size:10.5px;color:#A6AAB2;margin-top:3px;">2026-06-10 → 进行中</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                  <span style="width:34px;height:34px;border-radius:10px;background:var(--brand-rose-tint);display:grid;place-items:center;flex:none;font-size:15px;">💧</span>
+                  <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:13.5px;font-weight:700;">维 C 精华</span><span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">LEFT 左</span></div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">维生素 C 精华 · 3–4 滴 · 每早</div>
+                    <div style="font-size:10.5px;color:#A6AAB2;margin-top:3px;">2026-06-10 → 进行中</div>
+                  </div>
+                </div>
+              </div>
+              <!-- baseline section -->
+              <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin:16px 0 9px;">基线（两侧）</div>
+              <div class="card" style="background:#EEF4FF;border-color:#DCE7FB;">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;"><span class="chip" style="background:#fff;color:#3B6FD4;border:1px solid #DCE7FB;">BOTH 两侧</span><span style="font-size:11px;color:#3B6FD4;font-weight:700;">Vehicle-Controlled 基线</span></div>
+                <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                  <span class="chip" style="background:#fff;color:#3B6FD4;border:1px solid #DCE7FB;">洁面</span>
+                  <span class="chip" style="background:#fff;color:#3B6FD4;border:1px solid #DCE7FB;">保湿</span>
+                  <span class="chip" style="background:#fff;color:#3B6FD4;border:1px solid #DCE7FB;">SPF50</span>
+                </div>
+                <div style="font-size:11px;color:#3B6FD4;margin-top:11px;line-height:1.6;">对照侧不是「什么都不用」—— 而是标准化基线；干预侧在此之上叠加测试产品。</div>
+              </div>
+              <!-- category picker hint -->
+              <div style="font-size:11px;color:#A6AAB2;margin-top:14px;line-height:1.6;">类目支持 11 种：视黄醇 · 保湿 · 防晒 · 维 C 精华 · 烟酰胺 · 多肽 · 眼霜 · 去角质 · 补剂 · 医美项目 · 其他</div>
+            </div>
+            <div class="scroll-fade" style="bottom:84px;"></div>
+            <div style="position:absolute;left:20px;right:20px;bottom:22px;"><button class="pill-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>添加产品</button></div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 G · 里程碑 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#E0A23A">G</span>
+    <h2>流程 G · 里程碑卡片摘要</h2>
+    <span class="note">F11 · 成就卡列表 · 图标 + 发生周次 + 一句描述 + 可分享卡片 · 得体不幼稚。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 21 · 里程碑卡片摘要 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">21</span><span class="dnm">里程碑卡片摘要</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">首个正向结果 / 持续改善 / 最佳结果 / 诊所验证 / 睡眠改善，各带 Share。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">里程碑</span></div>
+            <div class="pad" style="padding-bottom:20px;overflow:auto;height:calc(100% - 40px);">
+              <!-- milestone card (hero) -->
+              <div class="card" style="background:linear-gradient(140deg,#fff 38%,#FCEAF1);border-color:#F4D4E0;margin-bottom:11px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span style="width:44px;height:44px;border-radius:13px;background:var(--brand-rose);display:grid;place-items:center;flex:none;font-size:21px;">🌟</span>
+                  <div style="flex:1;"><div style="font-size:14px;font-weight:800;">首个正向结果</div><div style="font-size:11px;color:var(--text-secondary);">Week 4 · 干预侧首次领先对照侧</div></div>
+                  <span style="width:34px;height:34px;border-radius:10px;background:#fff;border:1px solid var(--hair);display:grid;place-items:center;flex:none;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#C2185B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg></span>
+                </div>
+              </div>
+              <!-- list -->
+              <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:11px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#E7F5EE;display:grid;place-items:center;flex:none;font-size:18px;">📈</span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">持续改善 3 周</div><div style="font-size:11px;color:var(--text-secondary);">Week 7 · 连续 3 周保持正向</div></div>
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>
+              </div>
+              <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:11px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#FCEAF1;display:grid;place-items:center;flex:none;font-size:18px;">🏆</span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">迄今最佳结果</div><div style="font-size:11px;color:var(--text-secondary);">Week 7 · SIS_delta 达到 +3</div></div>
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>
+              </div>
+              <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:11px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#EEF4FF;display:grid;place-items:center;flex:none;font-size:18px;">🩺</span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">诊所验证</div><div style="font-size:11px;color:var(--text-secondary);">Week 6 · 皮肤镜复核一致</div></div>
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>
+              </div>
+              <div class="card" style="display:flex;align-items:center;gap:12px;">
+                <span style="width:40px;height:40px;border-radius:12px;background:#EAF1FF;display:grid;place-items:center;flex:none;font-size:18px;">😴</span>
+                <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">睡眠改善</div><div style="font-size:11px;color:var(--text-secondary);">Week 5 · 平均深睡 +12%</div></div>
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v14"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 H · 订阅与门控 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#7C5CFC">H</span>
+    <h2>流程 H · 订阅层级 + 皮肤镜门控</h2>
+    <span class="note">F12 · 四层 Free/Paid/Premium/VIP（VIP 不显价，仅申请）· 皮肤镜模式门控按当前层级变体。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 22 · 订阅层级 ★toggle viewpoint -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">22</span><span class="dnm">订阅层级 + 升级 CTA</span><span class="dtag light">浅色</span><span class="dtag star">门控</span></div>
+      <p class="ddesc">切换 Free/Paid 视角：当前层高亮 + 皮肤镜模式门控 CTA 变化（升级 modal / 购买设备）。</p>
+      <div class="seg" data-toggle="tier"><button class="on" data-v="free">Free 视角</button><button data-v="paid">Paid 视角</button></div>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">订阅方案</span></div>
+            <div class="pad" style="padding-bottom:20px;overflow:auto;height:calc(100% - 40px);">
+              <!-- gated feature row -->
+              <div class="card t-derm" style="margin-bottom:14px;background:#F4EFFF;border-color:#E2D6FB;">
+                <div style="display:flex;align-items:center;gap:11px;">
+                  <span style="width:38px;height:38px;border-radius:11px;background:#fff;display:grid;place-items:center;flex:none;">🔬</span>
+                  <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">皮肤镜模式</div><div class="t-derm-sub" style="font-size:11px;color:var(--text-secondary);">需 Paid 及以上 · 高精度采集</div></div>
+                  <span style="font-size:14px;">🔒</span>
+                </div>
+                <button class="pill-btn t-derm-cta" style="margin-top:12px;padding:11px;font-size:13px;background:#7C5CFC;box-shadow:0 8px 18px rgba(124,92,252,.3);">升级到 Paid 解锁</button>
+              </div>
+              <!-- tiers -->
+              <div class="tier cur t-free" style="margin-bottom:11px;">
+                <span class="cur-tag">当前</span>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:14px;font-weight:800;">Free</span><span style="font-size:13px;font-weight:700;color:var(--text-secondary);">¥0</span></div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">手机采集 + 基础分析</div>
+              </div>
+              <div class="tier t-paid" style="margin-bottom:11px;">
+                <span class="cur-tag">当前</span>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:14px;font-weight:800;">Paid</span><span style="font-size:13px;font-weight:700;color:var(--brand-rose);">¥68 / 月</span></div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">皮肤镜 + 完整分析 + 基础医生指导</div>
+              </div>
+              <div class="tier" style="margin-bottom:11px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;"><span style="font-size:14px;font-weight:800;">Premium</span><span style="font-size:13px;font-weight:700;color:var(--brand-rose);">¥168 / 月</span></div>
+                <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">更多医生指导</div>
+              </div>
+              <div class="tier" style="background:linear-gradient(140deg,#1F2024,#3A2C4A);border-color:#3A2C4A;">
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:14px;font-weight:800;color:#fff;">VIP</span><span style="font-size:11px;color:#C9BEDB;">仅限申请</span></div>
+                <div style="font-size:11px;color:#C9BEDB;margin:4px 0 11px;">1:1 专属指导</div>
+                <button class="pill-btn" style="padding:10px;font-size:13px;background:#fff;color:#1F2024;box-shadow:none;">申请 VIP</button>
+              </div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 I · 数据隐私 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#2E9E6B">I</span>
+    <h2>流程 I · 隐私中心（分层透明）</h2>
+    <span class="note">F16 · 非「数据不出设备」而是「透明分层、你来掌控」· Tier 0/1/2 + 数据权利操作。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 23 · 隐私中心 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">23</span><span class="dnm">隐私中心</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">Tier 0/1/2 可展开 · Tier 2 一键撤回贡献 · 导出 / 删除 / 查看同意记录。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="appbar"><div class="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><span class="at">隐私中心</span></div>
+            <div class="pad" style="padding-bottom:20px;overflow:auto;height:calc(100% - 40px);">
+              <div style="display:flex;gap:9px;align-items:flex-start;background:#E7F5EE;border:1px solid #CBE9DA;border-radius:13px;padding:11px 13px;margin-bottom:14px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#2E9E6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+                <div style="font-size:11.5px;color:#1E7A50;">我们采用<b>透明分层</b>模型——你清楚每层数据如何使用，并可随时掌控。</div>
+              </div>
+              <!-- Tier 0 -->
+              <div class="card" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="width:30px;height:30px;border-radius:9px;background:#E7F5EE;color:var(--sis-positive);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;">0</span>
+                  <div style="flex:1;"><div style="font-size:13px;font-weight:700;">生活方式日志</div><div style="font-size:10.5px;color:var(--text-secondary);">本地优先 · Local-first</div></div>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+              </div>
+              <!-- Tier 1 -->
+              <div class="card" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="width:30px;height:30px;border-radius:9px;background:#EEF4FF;color:#3B6FD4;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;">1</span>
+                  <div style="flex:1;"><div style="font-size:13px;font-weight:700;">影像 / 特征 / SIS 结果</div><div style="font-size:10.5px;color:var(--text-secondary);">私密 · 服务端加密存储</div></div>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+              </div>
+              <!-- Tier 2 expanded with withdraw -->
+              <div class="card" style="margin-bottom:14px;border-color:#E2D6FB;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="width:30px;height:30px;border-radius:9px;background:#F4EFFF;color:#7C5CFC;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;">2</span>
+                  <div style="flex:1;"><div style="font-size:13px;font-weight:700;">匿名队列聚合</div><div style="font-size:10.5px;color:var(--text-secondary);">去标识化 · 用于研究</div></div>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#9AA0A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                </div>
+                <div style="height:1px;background:var(--hair-soft);margin:12px 0;"></div>
+                <div style="display:flex;align-items:center;gap:11px;">
+                  <div style="flex:1;font-size:12px;color:var(--text-primary);font-weight:600;">撤回我的贡献</div>
+                  <span style="width:46px;height:27px;border-radius:999px;background:var(--brand-rose);position:relative;flex:none;"><span style="position:absolute;top:3px;right:3px;width:21px;height:21px;border-radius:50%;background:#fff;"></span></span>
+                </div>
+              </div>
+              <!-- data rights -->
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:2px 0 9px;">数据权利</div>
+              <div class="glist">
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><span class="gt">导出我的全部数据</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v8M9 9v6M15 9v6"/><path d="M5 21V8m14 13V8M3 8h18"/></svg></span><span class="gt" style="color:var(--sis-negative);">删除账号与数据</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg></span><span class="gt">查看同意记录</span><span class="gv">含时间戳</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 流程 J · 个人中心 ============ -->
+  <div class="sec-head">
+    <span class="sec-badge" style="background:#6B7280">J</span>
+    <h2>流程 J · Profile / 设置</h2>
+    <span class="note">底部 Tab「我的」· 头像/层级/Week 7/26 · 分组设置列表 · 跨平台统一 chevron。</span>
+  </div>
+  <div class="rail">
+
+    <!-- 屏 24 · Profile / 设置 -->
+    <div class="device">
+      <div class="dlabel"><span class="dno">24</span><span class="dnm">Profile / 设置</span><span class="dtag light">浅色</span></div>
+      <p class="ddesc">头像 + 订阅层级 chip + Week 7/26 迷你状态 · 分组设置 · 退出登录。底部 4-Tab。</p>
+      <div class="phone"><div class="notch"></div>
+        <div class="screen">
+          <div class="sbar"><span>9:41</span><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 14h3v6H2zM7 10h3v10H7zM12 6h3v14h-3zM17 3h3v17h-3z"/></svg><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 8 2 9l10 11L22 9c-1-1-5-5-10-5z"/></svg><svg viewBox="0 0 26 24" fill="none"><rect x="1" y="6" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="8" width="14" height="8" rx="1.5" fill="currentColor"/><rect x="22.5" y="10" width="2" height="4" rx="1" fill="currentColor"/></svg></span></div>
+          <div class="body">
+            <div class="pad" style="padding-top:12px;padding-bottom:90px;overflow:auto;height:100%;">
+              <!-- profile header -->
+              <div style="display:flex;align-items:center;gap:14px;margin:4px 0 6px;">
+                <div style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#F8D7E3,#C2185B);flex:none;"></div>
+                <div style="flex:1;">
+                  <div style="font-size:17px;font-weight:800;">Mia Chen</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:4px;">
+                    <span class="chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);">Paid</span>
+                    <span style="font-size:11.5px;color:var(--text-secondary);">Week <b style="color:var(--text-primary)">7</b> / 26</span>
+                  </div>
+                </div>
+              </div>
+              <!-- mini progress -->
+              <div style="display:flex;gap:2.5px;margin:10px 0 18px;">
+                <span style="flex:7;height:6px;border-radius:4px;background:var(--brand-rose);"></span>
+                <span style="flex:19;height:6px;border-radius:4px;background:#E9EBEF;"></span>
+              </div>
+              <!-- group: study -->
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:0 0 8px 4px;">研究协议</div>
+              <div class="glist" style="margin-bottom:16px;">
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></span><span class="gt">暂停 / 恢复研究</span><span class="gv">进行中</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:8px;"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13l2 2 4-4"/></svg></span><span class="gt">查看知情同意</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+              <!-- group: account -->
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin:0 0 8px 4px;">账号</div>
+              <div class="glist" style="margin-bottom:16px;">
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></span><span class="gt">已连接设备</span><span class="gv">Apple Health</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:8px;"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi">🧴</span><span class="gt">我的产品</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi">💳</span><span class="gt">订阅</span><span class="gv">Paid</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:8px;"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span class="gt">通知与采集提醒</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></span><span class="gt">隐私中心</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+              <!-- group: support -->
+              <div class="glist">
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></span><span class="gt">帮助</span><svg class="chev" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                <div class="grow"><span class="gi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#D14343" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></span><span class="gt" style="color:var(--sis-negative);">退出登录</span></div>
+              </div>
+            </div>
+            <div class="scroll-fade" style="bottom:78px;"></div>
+          </div>
+          <nav class="tabbar">
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span class="l">首页</span></div>
+            <div class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg><span class="l">洞察</span></div>
+            <div class="tb-cap"><div class="cb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg></div><span class="l">采集</span></div>
+            <div class="tb active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span class="l">我的</span></div>
+          </nav>
+          <div class="homeind"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>DrRuby · §3 逐屏界面（第 2 批 · 15 屏）· 设计基线 app-prompts v1.0 / MVP2.md · 延续 §2 信息架构视觉语言</span>
+    <span>第 1 批：核心采集流 9 屏 见 逐屏界面.html · §3 全 24 屏已覆盖</span>
+  </footer>
+
+</main>
+
+<script>
+  // —— 多状态切换器（沿用第 1 批同一系统）——
+  function bindToggle(name, apply){
+    var seg = document.querySelector('[data-toggle="'+name+'"]');
+    if(!seg) return;
+    seg.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        seg.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+        apply(b.getAttribute('data-v'), seg);
+      });
+    });
+  }
+
+  // 屏 7 · Brenner verdict 过滤
+  bindToggle('verdict', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    phone.querySelectorAll('.vrow').forEach(function(r){
+      r.style.display = (v==='all' || r.getAttribute('data-vk')===v) ? 'flex' : 'none';
+    });
+  });
+
+  // 屏 8 · 健康授权 平台
+  var HEALTH = {
+    ios:{name:'Apple Health', head:'连接 Apple Health', btn:'连接 Apple Health',
+         iconBg:'#FCE9EE', icon:'<svg viewBox="0 0 24 24" width="32" height="32" fill="#FF3B5C"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.7 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.3 0 5 3.5 3.3 7-2.3 4.4-9.3 9-9.3 9Z"/></svg>'},
+    android:{name:'Health Connect', head:'连接 Health Connect', btn:'连接 Health Connect',
+         iconBg:'#E6F0FE', icon:'<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#1A73E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>'}
+  };
+  bindToggle('health', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    var h = HEALTH[v];
+    phone.querySelector('.ha-head').textContent = h.head;
+    phone.querySelector('.ha-btn').textContent = h.btn;
+    var ic = phone.querySelector('.ha-icon');
+    ic.style.background = h.iconBg; ic.innerHTML = h.icon;
+  });
+
+  // 屏 17 · 连接行 平台
+  var CONN = {
+    ios:{name:'Apple Health', iconBg:'#FCE9EE', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="#FF3B5C"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.7 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.3 0 5 3.5 3.3 7-2.3 4.4-9.3 9-9.3 9Z"/></svg>'},
+    android:{name:'Health Connect', iconBg:'#E6F0FE', icon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1A73E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>'}
+  };
+  bindToggle('conn', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    var c = CONN[v];
+    phone.querySelector('.cn-name').textContent = c.name;
+    var ic = phone.querySelector('.cn-icon');
+    ic.style.background = c.iconBg; ic.innerHTML = c.icon;
+  });
+
+  // 屏 22 · 订阅 视角门控
+  var TIER = {
+    free:{cur:'t-free', dermBg:'#F4EFFF', dermBd:'#E2D6FB', dermSub:'需 Paid 及以上 · 高精度采集',
+          cta:'升级到 Paid 解锁', ctaBg:'#7C5CFC', ctaShadow:'0 8px 18px rgba(124,92,252,.3)', ctaColor:'#fff'},
+    paid:{cur:'t-paid', dermBg:'#FCEAF1', dermBd:'#F4D4E0', dermSub:'你的方案已包含 · 需配套皮肤镜设备',
+          cta:'购买皮肤镜设备', ctaBg:'#C2185B', ctaShadow:'0 8px 18px rgba(194,24,91,.32)', ctaColor:'#fff'}
+  };
+  bindToggle('tier', function(v, seg){
+    var phone = seg.parentElement.querySelector('.phone');
+    var t = TIER[v];
+    phone.querySelector('.t-free').classList.toggle('cur', v==='free');
+    phone.querySelector('.t-paid').classList.toggle('cur', v==='paid');
+    var card = phone.querySelector('.t-derm');
+    card.style.background = t.dermBg; card.style.borderColor = t.dermBd;
+    phone.querySelector('.t-derm-sub').textContent = t.dermSub;
+    var cta = phone.querySelector('.t-derm-cta');
+    cta.textContent = t.cta; cta.style.background = t.ctaBg; cta.style.boxShadow = t.ctaShadow; cta.style.color = t.ctaColor;
+  });
+</script>
+</body>
+</html>

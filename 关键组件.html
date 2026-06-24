@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DrRuby · §4 关键组件库（单独打磨）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* §1 设计 Token */
+    --brand-rose:#C2185B;
+    --brand-rose-tint:#F8D7E3;
+    --text-primary:#1F2024;
+    --text-secondary:#6B7280;
+    --surface:#F5F6F8;
+    --sis-positive:#2E9E6B;
+    --sis-zero:#9AA0A6;
+    --sis-negative:#E0613A;
+    --mcs-high:#2E9E6B;
+    --mcs-med:#E0A23A;
+    --mcs-low:#D14343;
+    --verdict-keep:#2E9E6B;
+    --verdict-stop:#D14343;
+    --verdict-review:#E0A23A;
+    --verdict-caution:#B08260;
+    --dark:#16171B;
+
+    --board-bg:#ECEEF2;
+    --card:#FFFFFF;
+    --hair:#E5E7EB;
+    --hair-soft:#EEF0F3;
+    --shadow-sm:0 1px 2px rgba(16,18,28,.05), 0 1px 3px rgba(16,18,28,.06);
+    --shadow-md:0 6px 18px rgba(16,18,28,.08), 0 2px 6px rgba(16,18,28,.05);
+    --shadow-lg:0 18px 48px rgba(16,18,28,.16);
+    --font:"Inter",-apple-system,"SF Pro Text","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font);
+    background:var(--board-bg);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  :lang(zh){line-height:1.7;}
+  h1,h2,h3,h4,h5,p{margin:0;}
+  .board{max-width:1480px;margin:0 auto;padding:48px 40px 110px;}
+
+  /* ——— Header ——— */
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:14px;}
+  .head .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:10px;}
+  .head h1{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .head .sub{font-size:15px;color:var(--text-secondary);margin-top:8px;max-width:640px;}
+  .head .meta{font-size:12.5px;color:var(--text-secondary);text-align:right;line-height:1.9;}
+  .head .meta b{color:var(--text-primary);font-weight:600;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 8px;padding-top:22px;border-top:1px solid var(--hair);}
+  .swatch{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-secondary);background:var(--card);border:1px solid var(--hair);border-radius:999px;padding:5px 11px 5px 6px;box-shadow:var(--shadow-sm);}
+  .swatch i{width:14px;height:14px;border-radius:5px;display:inline-block;}
+  .swatch b{color:var(--text-primary);font-weight:600;}
+  .scope-note{font-size:12.5px;color:var(--text-secondary);margin:14px 0 20px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:11px 15px;box-shadow:var(--shadow-sm);}
+  .scope-note b{color:var(--text-primary);}
+
+  /* ——— Component section ——— */
+  .comp{background:var(--card);border:1px solid var(--hair);border-radius:22px;box-shadow:var(--shadow-md);margin:30px 0;overflow:hidden;}
+  .comp-head{display:flex;align-items:baseline;gap:14px;padding:24px 28px 18px;flex-wrap:wrap;}
+  .comp-no{font-size:13px;font-weight:800;color:#fff;background:var(--text-primary);min-width:30px;height:28px;border-radius:8px;display:grid;place-items:center;padding:0 8px;flex:none;align-self:center;}
+  .comp-head h2{font-size:20px;font-weight:800;letter-spacing:-.01em;}
+  .comp-head .en{font-size:12.5px;font-weight:600;color:var(--text-secondary);letter-spacing:.01em;}
+  .comp-head .prio{margin-left:auto;align-self:center;font-size:10.5px;font-weight:800;letter-spacing:.04em;border-radius:999px;padding:4px 11px;background:var(--brand-rose-tint);color:var(--brand-rose);text-transform:uppercase;}
+  .comp-head .desc{flex-basis:100%;font-size:13px;color:var(--text-secondary);margin-top:2px;max-width:880px;}
+
+  /* stage = where the component states are shown */
+  .stage{padding:26px 28px;background:var(--surface);border-top:1px solid var(--hair-soft);border-bottom:1px solid var(--hair-soft);}
+  .stage.dk{background:#0B0C0F;border-color:#1C1E24;}
+  .stage .stage-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:16px;}
+  .stage.dk .stage-label{color:#7E848F;}
+  .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;}
+
+  /* a single labeled state cell */
+  .state{display:flex;flex-direction:column;gap:10px;}
+  .state .cap{font-size:11.5px;font-weight:700;color:var(--text-secondary);display:flex;align-items:center;gap:7px;}
+  .state .cap .dot{width:8px;height:8px;border-radius:999px;flex:none;}
+  .stage.dk .state .cap{color:#9DA2AC;}
+
+  /* spec strip */
+  .spec{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair-soft);}
+  .spec .cell{background:var(--card);padding:16px 22px;}
+  .spec .k{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:7px;}
+  .spec .v{font-size:12.5px;color:var(--text-primary);line-height:1.6;}
+  .spec .v b{font-weight:700;}
+  .spec .v code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:var(--surface);border:1px solid var(--hair);border-radius:5px;padding:1px 5px;color:var(--brand-rose);}
+  @media (max-width:920px){.spec{grid-template-columns:repeat(2,1fr);}}
+
+  /* ——— shared primitives ——— */
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:999px;padding:5px 12px;line-height:1;}
+  .chip svg{width:14px;height:14px;flex:none;}
+  .chip i{width:7px;height:7px;border-radius:999px;flex:none;}
+
+  /* ============ 1 · AR 引导框 ============ */
+  .cam{width:208px;height:300px;border-radius:24px;position:relative;overflow:hidden;
+       background:radial-gradient(120% 80% at 50% 38%, #2A2D34 0%, #16181D 55%, #0C0D11 100%);
+       border:1px solid #23262E;}
+  .cam .feedhint{position:absolute;top:8px;right:12px;font-size:9px;color:#5B616C;letter-spacing:.04em;}
+  /* side step indicator */
+  .cam .stepind{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;
+                background:rgba(8,9,12,.62);backdrop-filter:blur(8px);border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;z-index:6;border:1px solid rgba(255,255,255,.1);}
+  .cam .stepind .sd{width:7px;height:7px;border-radius:999px;background:#C2185B;flex:none;}
+  /* guidance frame (oval) */
+  .cam .frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-46%);width:128px;height:168px;
+              border-radius:50%/46% 46% 54% 54%;border:2.5px solid;z-index:4;}
+  .cam .frame.ok{border-color:#3FD08A;box-shadow:0 0 0 4px rgba(63,208,138,.16), inset 0 0 24px rgba(63,208,138,.18);}
+  .cam .frame.bad{border-color:#FF6A4D;box-shadow:0 0 0 4px rgba(255,106,77,.16);border-style:dashed;}
+  /* cheekbone / under-eye triangle (the analysis target) */
+  .cam .tri{position:absolute;z-index:5;}
+  .cam .tri svg{width:54px;height:46px;}
+  /* corner brackets */
+  .cam .bracket{position:absolute;width:18px;height:18px;border:2px solid rgba(255,255,255,.4);z-index:3;}
+  .cam .bracket.tl{top:46px;left:30px;border-right:none;border-bottom:none;border-radius:5px 0 0 0;}
+  .cam .bracket.tr{top:46px;right:30px;border-left:none;border-bottom:none;border-radius:0 5px 0 0;}
+  .cam .bracket.bl{bottom:78px;left:30px;border-right:none;border-top:none;border-radius:0 0 0 5px;}
+  .cam .bracket.br{bottom:78px;right:30px;border-left:none;border-top:none;border-radius:0 0 5px 0;}
+  /* distance hint pill */
+  .cam .hint{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+             border-radius:999px;padding:6px 13px;font-size:11px;font-weight:700;white-space:nowrap;z-index:6;}
+  .cam .hint.ok{background:rgba(46,158,107,.92);color:#fff;}
+  .cam .hint.bad{background:rgba(209,67,67,.94);color:#fff;}
+  .cam .hint svg{width:13px;height:13px;}
+  /* shutter */
+  .cam .shutter{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;z-index:6;
+                border:3px solid rgba(255,255,255,.85);background:rgba(255,255,255,.12);}
+  .cam .shutter.live{background:#fff;}
+  .cam .shutter.off{border-color:rgba(255,255,255,.3);}
+  /* quality HUD chips inside cam */
+  .qhud{position:absolute;top:46px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:6;flex-wrap:wrap;width:172px;justify-content:center;}
+  .qchip{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;border-radius:999px;padding:3px 7px;line-height:1;backdrop-filter:blur(6px);}
+  .qchip svg{width:9px;height:9px;}
+  .qchip.pass{background:rgba(46,158,107,.22);color:#7DE6B4;border:1px solid rgba(63,208,138,.4);}
+  .qchip.fail{background:rgba(209,67,67,.26);color:#FF9C8A;border:1px solid rgba(255,106,77,.5);}
+
+  /* the standalone quality chip row spec (below cams) */
+  .qrow{display:flex;gap:9px;flex-wrap:wrap;}
+  .qbig{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;border-radius:11px;padding:9px 14px;border:1px solid;}
+  .qbig svg{width:15px;height:15px;}
+  .qbig.pass{background:rgba(46,158,107,.14);color:#1F8A5B;border-color:rgba(46,158,107,.3);}
+  .qbig.fail{background:rgba(209,67,67,.12);color:#B3352F;border-color:rgba(209,67,67,.32);}
+
+  /* ============ 2 · SIS_delta 卡片 ============ */
+  .sis{border-radius:18px;border:1px solid var(--hair);background:var(--card);box-shadow:var(--shadow-sm);}
+  .sis.compact{width:240px;padding:15px 17px;display:flex;align-items:center;gap:13px;}
+  .sis.expanded{width:300px;padding:18px;}
+  .sis .ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none;}
+  .sis .ico svg{width:22px;height:22px;}
+  .sis .big{font-size:25px;font-weight:800;letter-spacing:-.01em;line-height:1.1;}
+  .sis .lbl{font-size:11.5px;color:var(--text-secondary);font-weight:600;margin-top:2px;}
+  .sis.expanded .sub{font-size:12.5px;color:var(--text-secondary);margin:11px 0 14px;line-height:1.5;}
+  .sis .spark{width:100%;height:54px;}
+  .sis .sparklegend{display:flex;gap:14px;margin-top:9px;font-size:10.5px;color:var(--text-secondary);font-weight:600;}
+  .sis .sparklegend span{display:inline-flex;align-items:center;gap:5px;}
+  .sis .sparklegend i{width:13px;height:3px;border-radius:2px;display:inline-block;}
+  .sis-pos{color:var(--sis-positive);} .sis-zero{color:var(--sis-zero);} .sis-neg{color:var(--sis-negative);}
+
+  /* ============ 3 · MCS ============ */
+  .mcs-badge{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;border-radius:999px;padding:8px 16px;letter-spacing:.01em;}
+  .mcs-badge svg{width:17px;height:17px;}
+  .banner{display:flex;align-items:flex-start;gap:11px;border-radius:14px;padding:14px 16px;max-width:520px;border:1px solid;}
+  .banner svg{width:20px;height:20px;flex:none;margin-top:1px;}
+  .banner .bt{font-size:13px;font-weight:700;}
+  .banner .bb{font-size:12.5px;color:var(--text-secondary);margin-top:2px;line-height:1.55;}
+  .banner.warn{background:#FCF6EA;border-color:#F0E2BE;}
+  .banner.warn svg{color:var(--mcs-med);}
+
+  /* ============ 4 · Brenner verdict ============ */
+  .verdict{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 12px 6px 11px;line-height:1;}
+  .verdict svg{width:14px;height:14px;flex:none;}
+  .verdict .src{font-size:9.5px;font-weight:700;opacity:.66;border-left:1px solid currentColor;padding-left:6px;margin-left:1px;letter-spacing:.02em;}
+  .v-keep{background:rgba(46,158,107,.13);color:#1F8A5B;}
+  .v-stop{background:rgba(209,67,67,.13);color:#B3352F;}
+  .v-review{background:rgba(224,162,58,.16);color:#9A6B11;}
+  .v-caution{background:rgba(176,130,96,.16);color:#7C5639;}
+  /* list-row usage */
+  .vlist{width:360px;background:var(--card);border:1px solid var(--hair);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);}
+  .vrow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--hair-soft);}
+  .vrow:last-child{border-bottom:none;}
+  .vrow .vn{font-size:13.5px;font-weight:600;}
+  .vrow .vsub{font-size:11px;color:var(--text-secondary);margin-top:1px;}
+  .vrow .vv{margin-left:auto;}
+
+  /* ============ 5 · Week N/26 ============ */
+  .week-lg{width:380px;background:var(--card);border:1px solid var(--hair);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm);}
+  .week-lg .top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;}
+  .week-lg .wk{font-size:13px;font-weight:700;color:var(--text-secondary);letter-spacing:.04em;}
+  .week-lg .wn{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1;}
+  .week-lg .wn span{font-size:20px;color:var(--text-secondary);font-weight:700;}
+  .track{display:flex;gap:3px;}
+  .track .seg-i{flex:1;height:8px;border-radius:3px;background:#E5E7EB;}
+  .track .seg-i.done{background:var(--brand-rose);}
+  .track .seg-i.cur{background:var(--brand-rose);box-shadow:0 0 0 3px var(--brand-rose-tint);}
+  .week-cmp{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:9px 14px;box-shadow:var(--shadow-sm);}
+  .week-cmp .wn{font-size:16px;font-weight:800;letter-spacing:-.01em;}
+  .week-cmp .wn span{font-size:12px;color:var(--text-secondary);font-weight:700;}
+  .week-cmp .mini{display:flex;gap:2px;}
+  .week-cmp .mini i{width:4px;height:14px;border-radius:2px;background:#E5E7EB;}
+  .week-cmp .mini i.done{background:var(--brand-rose);}
+  .status-chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;border-radius:999px;padding:6px 13px;}
+  .status-chip i{width:8px;height:8px;border-radius:999px;flex:none;}
+  .sc-washout{background:#FBF3E2;color:#B07A14;}
+  .sc-active{background:rgba(46,158,107,.13);color:#1F8A5B;}
+  .sc-paused{background:#EEF0F3;color:#6B7280;}
+  .sc-done{background:var(--brand-rose-tint);color:var(--brand-rose);}
+
+  /* ============ 6 · 漏采降级状态条 ============ */
+  .capbar{display:flex;align-items:center;gap:12px;border-radius:14px;padding:13px 16px;max-width:520px;border:1px solid;}
+  .capbar .cbi{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;}
+  .capbar .cbi svg{width:18px;height:18px;}
+  .capbar .ct{font-size:13px;font-weight:700;}
+  .capbar .cb2{font-size:12px;color:var(--text-secondary);margin-top:1px;line-height:1.5;}
+  .capbar .cnt{margin-left:auto;font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;flex:none;align-self:center;}
+  .cap-ok{background:rgba(46,158,107,.1);border-color:rgba(46,158,107,.26);}
+  .cap-ok .cbi{background:rgba(46,158,107,.16);color:#1F8A5B;} .cap-ok .cnt{background:rgba(46,158,107,.16);color:#1F8A5B;}
+  .cap-deg{background:#FCF6EA;border-color:#F0E2BE;}
+  .cap-deg .cbi{background:rgba(224,162,58,.18);color:#9A6B11;} .cap-deg .cnt{background:rgba(224,162,58,.2);color:#9A6B11;}
+  .cap-skip{background:var(--card);border-color:var(--hair);}
+  .cap-skip .cbi{background:#EEF0F3;color:#6B7280;} .cap-skip .cnt{background:#EEF0F3;color:#6B7280;}
+
+  .footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--hair);font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .footer b{color:var(--text-primary);}
+</style>
+</head>
+<body>
+<main class="board">
+
+  <!-- ============ HEADER ============ -->
+  <header class="head">
+    <div>
+      <div class="eyebrow">DrRuby · §4 关键组件提示词 → 组件规格</div>
+      <h1>关键组件库（单独打磨）</h1>
+      <p class="sub">复用度高、交互复杂、需沉淀进设计系统的 <b>6 个核心控件</b>。每个组件全状态平铺 + 规格标注（用途 / 出现位置 / 关键 Token / 无障碍），延续 §1 设计 Token 与 §3 界面视觉语言。</p>
+    </div>
+    <div class="meta">
+      基线：<b>app-prompts v1.0 §4</b><br/>
+      配套 <b>§3 逐屏界面</b>（24 屏）<br/>
+      品牌色 <b style="color:var(--brand-rose)">Ruby #C2185B</b>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span class="swatch"><i style="background:var(--brand-rose)"></i><b>Rose</b> 主操作/品牌</span>
+    <span class="swatch"><i style="background:var(--sis-positive)"></i><b>正 / High / keep</b> 改善</span>
+    <span class="swatch"><i style="background:var(--mcs-med)"></i><b>Med / review</b> 中等</span>
+    <span class="swatch"><i style="background:var(--sis-negative)"></i><b>负 / 刺激</b> 警示</span>
+    <span class="swatch"><i style="background:var(--mcs-low)"></i><b>Low / stop</b> 失败</span>
+    <span class="swatch"><i style="background:var(--verdict-caution)"></i><b>caution</b> 留意</span>
+    <span class="swatch"><i style="background:var(--sis-zero)"></i><b>Zero / skipped</b> 中性</span>
+  </div>
+  <p class="scope-note">🧩 <b>设计原则</b>：所有语义状态<b>「颜色 + 图标 + 文字」三重编码</b>，不单靠颜色区分（WCAG AA · 无障碍）。每个组件给出可直接落入设计系统的状态集与复用位置（对应 §3 屏号）。</p>
+
+  <!-- ============ 1 · AR 引导框 ============ -->
+  <section class="comp" data-screen-label="组件1-AR引导框">
+    <div class="comp-head">
+      <span class="comp-no">1</span>
+      <div>
+        <h2>AR 采集引导框</h2>
+        <div class="en">AR face-capture guidance overlay · 实时质检 HUD</div>
+      </div>
+      <span class="prio">最高优先级</span>
+      <p class="desc">全屏深色相机之上的引导浮层：椭圆人脸框 + 颧骨/眼下三角靶区 + 距离引导 + 左右侧强制顺序指示 + 4 路实时质检 chip。底层 iOS ARKit / Android ARCore，Flutter 封装为统一组件，UI 两端一致。</p>
+    </div>
+
+    <div class="stage dk">
+      <div class="stage-label">引导状态 ·  过远 / 过近 / 对齐锁定 / 采集左脸 / 采集右脸</div>
+      <div class="row">
+
+        <!-- (a) too far -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:#FF6A4D"></span>a · 距离过远</div>
+          <div class="cam">
+            <span class="feedhint">相机画面（占位）</span>
+            <div class="stepind"><span class="sd"></span>Step 1 / 2 · LEFT 左脸</div>
+            <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
+            <div class="frame bad" style="width:96px;height:128px;"></div>
+            <div class="hint bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>靠近一些（~20cm）</div>
+            <div class="shutter off"></div>
+          </div>
+        </div>
+
+        <!-- (b) too close -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:#FF6A4D"></span>b · 距离过近</div>
+          <div class="cam">
+            <span class="feedhint">相机画面（占位）</span>
+            <div class="stepind"><span class="sd"></span>Step 1 / 2 · LEFT 左脸</div>
+            <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
+            <div class="frame bad" style="width:158px;height:206px;"></div>
+            <div class="hint bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>后退一些</div>
+            <div class="shutter off"></div>
+          </div>
+        </div>
+
+        <!-- (c) aligned -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:#3FD08A"></span>c · 对齐锁定 ✓</div>
+          <div class="cam">
+            <span class="feedhint">相机画面（占位）</span>
+            <div class="stepind"><span class="sd"></span>Step 1 / 2 · LEFT 左脸</div>
+            <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
+            <div class="frame ok"></div>
+            <div class="tri" style="top:152px;left:88px;">
+              <svg viewBox="0 0 54 46" fill="none"><path d="M6 8 L48 14 L20 40 Z" stroke="#3FD08A" stroke-width="2" stroke-linejoin="round" fill="rgba(63,208,138,.12)"/><circle cx="6" cy="8" r="2.4" fill="#3FD08A"/><circle cx="48" cy="14" r="2.4" fill="#3FD08A"/><circle cx="20" cy="40" r="2.4" fill="#3FD08A"/></svg>
+            </div>
+            <div class="hint ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>保持 ~20cm · 颧骨已锁定</div>
+            <div class="shutter live"></div>
+          </div>
+        </div>
+
+        <!-- (d) capturing right -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:#3FD08A"></span>d · 采集右脸（侧指示切换）</div>
+          <div class="cam">
+            <span class="feedhint">相机画面（占位）</span>
+            <div class="stepind"><span class="sd"></span>Step 2 / 2 · RIGHT 右脸</div>
+            <div class="bracket tl"></div><div class="bracket tr"></div><div class="bracket bl"></div><div class="bracket br"></div>
+            <div class="frame ok"></div>
+            <div class="tri" style="top:152px;left:66px;transform:scaleX(-1);">
+              <svg viewBox="0 0 54 46" fill="none"><path d="M6 8 L48 14 L20 40 Z" stroke="#3FD08A" stroke-width="2" stroke-linejoin="round" fill="rgba(63,208,138,.12)"/><circle cx="6" cy="8" r="2.4" fill="#3FD08A"/><circle cx="48" cy="14" r="2.4" fill="#3FD08A"/><circle cx="20" cy="40" r="2.4" fill="#3FD08A"/></svg>
+            </div>
+            <div class="hint ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>右侧已对齐</div>
+            <div class="shutter live"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">实时质检 chip · 4 路（清晰度 / 对焦 / 动态模糊 / 亮度）</div>
+      <div class="row" style="gap:34px;">
+        <div class="state">
+          <div class="cap" style="color:#7DE6B4;">全部通过 → 快门解锁</div>
+          <div class="qrow">
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>清晰度</span>
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>对焦</span>
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>动态模糊</span>
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>亮度</span>
+          </div>
+        </div>
+        <div class="state">
+          <div class="cap" style="color:#FF9C8A;">存在失败 → 快门禁用 + retake 提示</div>
+          <div class="qrow">
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>清晰度</span>
+            <span class="qbig fail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>对焦</span>
+            <span class="qbig fail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>动态模糊</span>
+            <span class="qbig pass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>亮度</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">采集时实时引导用户对齐 + 距离 + 质检；强制 <b>左→右</b> 顺序，全部通过才允许快门。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 13 AR 相机采集（核心）；逻辑延伸至屏 12 光线检测。</div></div>
+      <div class="cell"><div class="k">关键 Token / 规格</div><div class="v">框 <code>~128×168</code> 椭圆；OK=<code>#2E9E6B</code> 系，FAIL=<code>#D14343</code> 系；HUD chip ≥ 9px。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">帧色 + 文案 + 图标三重提示；快门禁用时显式给出失败原因，非仅置灰。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 2 · SIS_delta 卡片 ============ -->
+  <section class="comp" data-screen-label="组件2-SIS卡片">
+    <div class="comp-head">
+      <span class="comp-no">2</span>
+      <div>
+        <h2>SIS_delta 数值卡片</h2>
+        <div class="en">SIS_delta metric card · 相对比较框架</div>
+      </div>
+      <span class="prio">核心数据</span>
+      <p class="desc">恒以<b>「vs 对照侧」相对值</b>呈现（非绝对分，降低焦虑）。3 语义态 × 2 变体（紧凑 / 展开带迷你 sparkline）。涨跌箭头辅助，非仅颜色。</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">紧凑变体 · 用于列表 / 首页摘要</div>
+      <div class="row">
+        <!-- positive compact -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-positive)"></span>正向 · 改善</div>
+          <div class="sis compact">
+            <div class="ico" style="background:rgba(46,158,107,.13);color:var(--sis-positive)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7M12 5v15"/></svg></div>
+            <div><div class="big sis-pos">+3 <span style="font-size:13px;font-weight:700;color:var(--text-secondary)">vs 对照侧</span></div><div class="lbl">干预侧改善更快</div></div>
+          </div>
+        </div>
+        <!-- zero compact -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-zero)"></span>零 · 无差异</div>
+          <div class="sis compact">
+            <div class="ico" style="background:#EEF0F3;color:var(--sis-zero)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></div>
+            <div><div class="big sis-zero">0 <span style="font-size:13px;font-weight:700;color:var(--text-secondary)">vs 对照侧</span></div><div class="lbl">暂无差异</div></div>
+          </div>
+        </div>
+        <!-- negative compact -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-negative)"></span>负向 · 可能刺激</div>
+          <div class="sis compact">
+            <div class="ico" style="background:rgba(224,97,58,.13);color:var(--sis-negative)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12l-7 7-7-7M12 19V4"/></svg></div>
+            <div><div class="big sis-neg">−2 <span style="font-size:13px;font-weight:700;color:var(--text-secondary)">vs 对照侧</span></div><div class="lbl">可能刺激 · 留意</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">展开变体 · 用于 SIS 简版结果页 hero（迷你 26 周 sparkline）</div>
+      <div class="row">
+        <!-- positive expanded -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-positive)"></span>正向 · 展开</div>
+          <div class="sis expanded">
+            <div style="display:flex;align-items:center;gap:13px;">
+              <div class="ico" style="background:rgba(46,158,107,.13);color:var(--sis-positive)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7M12 5v15"/></svg></div>
+              <div><div class="big sis-pos">+3 <span style="font-size:14px;font-weight:700;color:var(--text-secondary)">vs 对照侧 ↑</span></div><div class="lbl">本周 · Week 7</div></div>
+            </div>
+            <div class="sub">你的干预侧正在比对照侧更快改善。</div>
+            <svg class="spark" viewBox="0 0 260 54" preserveAspectRatio="none">
+              <polyline points="0,40 37,38 74,33 111,30 148,24 185,18 222,12 260,8" fill="none" stroke="var(--sis-positive)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,42 37,41 74,40 111,39 148,38 185,37 222,36 260,35" fill="none" stroke="var(--sis-zero)" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
+            </svg>
+            <div class="sparklegend"><span><i style="background:var(--sis-positive)"></i>干预侧</span><span><i style="background:var(--sis-zero)"></i>对照侧</span></div>
+          </div>
+        </div>
+        <!-- zero expanded -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-zero)"></span>零 · 展开</div>
+          <div class="sis expanded">
+            <div style="display:flex;align-items:center;gap:13px;">
+              <div class="ico" style="background:#EEF0F3;color:var(--sis-zero)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></div>
+              <div><div class="big sis-zero">0 <span style="font-size:14px;font-weight:700;color:var(--text-secondary)">vs 对照侧</span></div><div class="lbl">本周 · Week 3</div></div>
+            </div>
+            <div class="sub">两侧暂时一致，继续坚持即可看出差异。</div>
+            <svg class="spark" viewBox="0 0 260 54" preserveAspectRatio="none">
+              <polyline points="0,30 37,31 74,29 111,30 148,31 185,30 222,29 260,30" fill="none" stroke="var(--sis-zero)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,33 37,32 74,33 111,32 148,33 185,32 222,33 260,32" fill="none" stroke="#C4C8CE" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
+            </svg>
+            <div class="sparklegend"><span><i style="background:var(--sis-zero)"></i>干预侧</span><span><i style="background:#C4C8CE"></i>对照侧</span></div>
+          </div>
+        </div>
+        <!-- negative expanded -->
+        <div class="state">
+          <div class="cap"><span class="dot" style="background:var(--sis-negative)"></span>负向 · 展开</div>
+          <div class="sis expanded">
+            <div style="display:flex;align-items:center;gap:13px;">
+              <div class="ico" style="background:rgba(224,97,58,.13);color:var(--sis-negative)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12l-7 7-7-7M12 19V4"/></svg></div>
+              <div><div class="big sis-neg">−2 <span style="font-size:14px;font-weight:700;color:var(--text-secondary)">vs 对照侧 ↓</span></div><div class="lbl">本周 · Week 5</div></div>
+            </div>
+            <div class="sub">干预侧略逊于对照侧，可能为刺激，建议留意。</div>
+            <svg class="spark" viewBox="0 0 260 54" preserveAspectRatio="none">
+              <polyline points="0,22 37,24 74,27 111,30 148,33 185,37 222,40 260,44" fill="none" stroke="var(--sis-negative)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,24 37,24 74,25 111,25 148,26 185,26 222,27 260,27" fill="none" stroke="var(--sis-zero)" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
+            </svg>
+            <div class="sparklegend"><span><i style="background:var(--sis-negative)"></i>干预侧</span><span><i style="background:var(--sis-zero)"></i>对照侧</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">展示干预侧相对对照侧的改善幅度，<b>始终相对框架</b>，避免绝对评分带来的焦虑。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 18 SIS 简版结果页 hero（展开）；首页 / 里程碑摘要（紧凑）。</div></div>
+      <div class="cell"><div class="k">关键 Token</div><div class="v">正 <code>#2E9E6B</code> · 零 <code>#9AA0A6</code> · 负 <code>#E0613A</code>；数字 tabular 加重。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">↑/−/↓ 箭头 + 文案双重表意；负值用琥珀而非警示红，避免恐慌。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 3 · MCS ============ -->
+  <section class="comp" data-screen-label="组件3-MCS徽章">
+    <div class="comp-head">
+      <span class="comp-no">3</span>
+      <div>
+        <h2>MCS 质量徽章 + 软警告条</h2>
+        <div class="en">Capture-quality (MCS) badge + non-blocking warning</div>
+      </div>
+      <p class="desc">采集质量（Measurement Confidence Score）3 态 pill 徽章 + 一条<b>不阻断</b>的软警告横幅（低质量时温和提示，不打断流程）。</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">质量徽章 · High / Medium / Low</div>
+      <div class="row" style="align-items:center;">
+        <div class="state">
+          <div class="cap">采集质量优</div>
+          <span class="mcs-badge" style="background:rgba(46,158,107,.14);color:#1F8A5B;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>采集质量 HIGH</span>
+        </div>
+        <div class="state">
+          <div class="cap">采集质量中</div>
+          <span class="mcs-badge" style="background:rgba(224,162,58,.16);color:#9A6B11;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>采集质量 MEDIUM</span>
+        </div>
+        <div class="state">
+          <div class="cap">采集质量低</div>
+          <span class="mcs-badge" style="background:rgba(209,67,67,.13);color:#B3352F;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>采集质量 LOW</span>
+        </div>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">软警告条 · 不阻断（低质量周）</div>
+      <div class="banner warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div><div class="bt">本周采集质量偏低</div><div class="bb">这可能影响我们对趋势的解读。建议：靠窗在自然光下拍摄，避免逆光与阴影。</div></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">即时反馈本次采集质量；低质量时<b>软提醒不强制重拍</b>，引导下次改善。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 14 MCS 评分结果；首页提示卡（F15 自适应）；SIS 结果页警告条。</div></div>
+      <div class="cell"><div class="k">关键 Token</div><div class="v">High <code>#2E9E6B</code> · Med <code>#E0A23A</code> · Low <code>#D14343</code>。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">✓ / △ / ⊘ 图标 + 文案；警告条用文案说明影响，语气支持而非指责。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 4 · Brenner verdict ============ -->
+  <section class="comp" data-screen-label="组件4-Brenner四态">
+    <div class="comp-head">
+      <span class="comp-no">4</span>
+      <div>
+        <h2>Brenner verdict 四态标签</h2>
+        <div class="en">Supplement verdict tag · 4-state</div>
+      </div>
+      <p class="desc">补剂评估结论标签，4 态：keep / stop / review / caution。每个 pill 带图标 + 文案 + 极简 <b>Brenner</b> 来源署名；紧凑形态可嵌入列表行尾。</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">四态 pill</div>
+      <div class="row" style="align-items:center;">
+        <span class="verdict v-keep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>保留 keep<span class="src">Brenner</span></span>
+        <span class="verdict v-stop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>停用 stop<span class="src">Brenner</span></span>
+        <span class="verdict v-review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>复核 review<span class="src">Brenner</span></span>
+        <span class="verdict v-caution"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>留意 caution<span class="src">Brenner</span></span>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">列表行内用法 · EvaluateMyStack 补剂快评</div>
+      <div class="vlist">
+        <div class="vrow"><div><div class="vn">维生素 D3</div><div class="vsub">2000 IU · 每日</div></div><span class="verdict v-keep vv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>保留<span class="src">Brenner</span></span></div>
+        <div class="vrow"><div><div class="vn">胶原蛋白粉</div><div class="vsub">10 g · 每日</div></div><span class="verdict v-stop vv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>停用<span class="src">Brenner</span></span></div>
+        <div class="vrow"><div><div class="vn">Omega-3 鱼油</div><div class="vsub">1000 mg · 每日</div></div><span class="verdict v-review vv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>复核<span class="src">Brenner</span></span></div>
+        <div class="vrow"><div><div class="vn">高剂量维生素 A</div><div class="vsub">10000 IU · 每日</div></div><span class="verdict v-caution vv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>留意<span class="src">Brenner</span></span></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">对用户补剂栈给出即时、有据可依的结论，<b>每条标注 Brenner 研究来源</b>。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 7 EvaluateMyStack 补剂快评（列表行尾实时显示）。</div></div>
+      <div class="cell"><div class="k">关键 Token</div><div class="v">keep <code>#2E9E6B</code> · stop <code>#D14343</code> · review <code>#E0A23A</code> · caution <code>#B08260</code>。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">四态各有独立图标（✓ / − / ⏱ / △）+ 文案，色盲可辨；来源署名可点开溯源。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 5 · Week N/26 ============ -->
+  <section class="comp" data-screen-label="组件5-研究进度">
+    <div class="comp-head">
+      <span class="comp-no">5</span>
+      <div>
+        <h2>研究进度指示器 · Week N/26</h2>
+        <div class="en">Study-progress indicator + status chips</div>
+      </div>
+      <p class="desc">大号「Week N / 26」+ 26 段细轨道（已完成 / 当前 / 未来）；含紧凑（页眉）与大号（仪表盘）两变体，配 4 态状态 chip：Washout / Active / Paused / Completed。</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">大号变体 · 首页仪表盘</div>
+      <div class="week-lg">
+        <div class="top">
+          <div><div class="wk">研究进度</div><div class="wn">Week 7<span> / 26</span></div></div>
+          <span class="status-chip sc-active"><i style="background:var(--sis-positive)"></i>进行中 Active</span>
+        </div>
+        <div class="track" id="track26"></div>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">紧凑变体 · 页眉 / Profile</div>
+      <div class="row" style="align-items:center;">
+        <div class="week-cmp">
+          <div class="mini" id="trackMini"></div>
+          <div class="wn">Week 7<span> / 26</span></div>
+        </div>
+      </div>
+
+      <div class="stage-label" style="margin-top:26px;">状态 chip · 四态</div>
+      <div class="row" style="align-items:center;">
+        <span class="status-chip sc-washout"><i style="background:var(--mcs-med)"></i>Washout 洗脱期</span>
+        <span class="status-chip sc-active"><i style="background:var(--sis-positive)"></i>进行中 Active</span>
+        <span class="status-chip sc-paused"><i style="background:var(--sis-zero)"></i>已暂停 Paused</span>
+        <span class="status-chip sc-done"><i style="background:var(--brand-rose)"></i>已完成 Completed</span>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">贯穿全程展示 26 周研究进度与协议状态，是首页与 Profile 的锚点。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 11 首页（大号）、屏 24 Profile（紧凑）、屏 10 Washout（状态 chip）。</div></div>
+      <div class="cell"><div class="k">关键 Token</div><div class="v">轨道当前段 = 品牌 rose + <code>#F8D7E3</code> 光晕；数字 tabular 800 字重。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">状态 chip 圆点色 + 中英文字双标；进度同时以「N/26」数字给出。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · 漏采降级状态条 ============ -->
+  <section class="comp" data-screen-label="组件6-漏采降级">
+    <div class="comp-head">
+      <span class="comp-no">6</span>
+      <div>
+        <h2>漏采降级状态条</h2>
+        <div class="en">Capture-status banner · 3-state</div>
+      </div>
+      <p class="desc">本周采集完成度 3 态：computed（2 次，正常）/ degraded（1 次，置信度下降）/ skipped（0 次，跳过）。语气支持、不施压。</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label">三态状态条</div>
+      <div class="row" style="flex-direction:column;gap:14px;align-items:stretch;">
+        <div class="capbar cap-ok">
+          <div class="cbi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div><div class="ct">本周进度正常</div><div class="cb2">已完成 2 次采集，趋势可正常解读。</div></div>
+          <span class="cnt">2 / 2</span>
+        </div>
+        <div class="capbar cap-deg">
+          <div class="cbi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+          <div><div class="ct">置信度下降 — 本周仅 1 次</div><div class="cb2">周末前请再采集一次，以恢复本周趋势置信度。</div></div>
+          <span class="cnt">1 / 2</span>
+        </div>
+        <div class="capbar cap-skip">
+          <div class="cbi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></div>
+          <div><div class="ct">本周已跳过</div><div class="cb2">没关系，下周继续即可，不影响整体研究。</div></div>
+          <span class="cnt">0 / 2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="cell"><div class="k">用途</div><div class="v">告知本周采集完成度对趋势置信度的影响，<b>缺采时温和召回</b>而非批评。</div></div>
+      <div class="cell"><div class="k">出现位置</div><div class="v">屏 16 上传完成（降级周）、首页采集提醒、SIS 结果置信度说明。</div></div>
+      <div class="cell"><div class="k">关键 Token</div><div class="v">正常 <code>#2E9E6B</code> · 降级 <code>#E0A23A</code> · 跳过 <code>#9AA0A6</code>；N/2 计数 pill。</div></div>
+      <div class="cell"><div class="k">无障碍</div><div class="v">图标 + 文案 + N/2 计数三重表意；语气支持，避免负罪感。</div></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>DrRuby · §4 关键组件库 · 6 组件 · 沉淀进设计系统</span>
+    <span>基线 <b>app-prompts v1.0 §4</b> · 配套 <b>§3 逐屏界面</b>（24 屏）</span>
+  </footer>
+
+</main>
+
+<script>
+  // 渲染 26 段进度轨道（大号 + 紧凑），当前 Week 7
+  (function(){
+    var CUR = 7, TOTAL = 26;
+    var big = document.getElementById('track26');
+    if (big){
+      for (var i=1;i<=TOTAL;i++){
+        var s = document.createElement('div');
+        s.className = 'seg-i' + (i < CUR ? ' done' : i === CUR ? ' cur' : '');
+        big.appendChild(s);
+      }
+    }
+    var mini = document.getElementById('trackMini');
+    if (mini){
+      for (var j=1;j<=TOTAL;j++){
+        var m = document.createElement('i');
+        if (j <= CUR) m.className = 'done';
+        mini.appendChild(m);
+      }
+    }
+  })();
+</script>
+</body>
+</html>

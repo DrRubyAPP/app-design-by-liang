@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DrRuby · 信息架构与导航</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* ——— §1 设计 Token ——— */
+    --brand-rose:#C2185B;
+    --brand-rose-tint:#F8D7E3;
+    --text-primary:#1F2024;
+    --text-secondary:#6B7280;
+    --surface:#F5F6F8;
+    --sis-positive:#2E9E6B;
+    --sis-zero:#9AA0A6;
+    --sis-negative:#E0613A;
+    --mcs-high:#2E9E6B;
+    --mcs-med:#E0A23A;
+    --mcs-low:#D14343;
+    --dark:#16171B;
+
+    /* board */
+    --board-bg:#ECEEF2;
+    --card:#FFFFFF;
+    --hair:#E5E7EB;
+    --hair-soft:#EEF0F3;
+    --radius-card:18px;
+    --radius-input:12px;
+    --shadow-sm:0 1px 2px rgba(16,18,28,.05), 0 1px 3px rgba(16,18,28,.06);
+    --shadow-md:0 6px 18px rgba(16,18,28,.08), 0 2px 6px rgba(16,18,28,.05);
+    --shadow-lg:0 18px 48px rgba(16,18,28,.16);
+    --font:"Inter",-apple-system,"SF Pro Text","PingFang SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font);
+    background:var(--board-bg);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  :lang(zh){line-height:1.72;}
+  h1,h2,h3,h4,p{margin:0;}
+  .board{max-width:1280px;margin:0 auto;padding:48px 40px 96px;}
+
+  /* ——— Header ——— */
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:14px;}
+  .head .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:10px;}
+  .head h1{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .head .sub{font-size:15px;color:var(--text-secondary);margin-top:8px;max-width:560px;}
+  .head .meta{font-size:12.5px;color:var(--text-secondary);text-align:right;line-height:1.9;}
+  .head .meta b{color:var(--text-primary);font-weight:600;}
+
+  /* token legend */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 56px;padding-top:22px;border-top:1px solid var(--hair);}
+  .swatch{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text-secondary);background:var(--card);border:1px solid var(--hair);border-radius:999px;padding:5px 11px 5px 6px;box-shadow:var(--shadow-sm);}
+  .swatch i{width:14px;height:14px;border-radius:5px;display:inline-block;}
+  .swatch b{color:var(--text-primary);font-weight:600;}
+
+  /* ——— Section frame ——— */
+  .section{margin-bottom:64px;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;}
+  .sec-num{font-size:13px;font-weight:800;color:#fff;background:var(--text-primary);width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;letter-spacing:0;}
+  .sec-head h2{font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  .sec-head .note{font-size:13px;color:var(--text-secondary);}
+
+  /* ——— Zone 1 · protocol spine ——— */
+  .spine{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius-card);box-shadow:var(--shadow-md);padding:30px 30px 26px;}
+  .spine-track{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:center;gap:0;}
+  .phase{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;min-width:118px;}
+  .phase .dot{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-weight:800;font-size:15px;color:#fff;box-shadow:var(--shadow-sm);}
+  .phase .nm{font-size:14px;font-weight:700;}
+  .phase .desc{font-size:11.5px;color:var(--text-secondary);max-width:150px;}
+  .phase .scr{font-size:10.5px;color:var(--text-secondary);background:var(--surface);border-radius:999px;padding:2px 9px;}
+  .connector{height:3px;border-radius:3px;background:linear-gradient(90deg,var(--hair),#cfd3da);position:relative;margin:0 6px;}
+  .connector::after{content:"";position:absolute;right:-2px;top:50%;transform:translateY(-50%);border-left:7px solid #cfd3da;border-top:5px solid transparent;border-bottom:5px solid transparent;}
+  .spine-loop{margin-top:24px;padding-top:22px;border-top:1px dashed var(--hair);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .spine-loop .lbl{font-size:12.5px;font-weight:700;color:var(--text-secondary);}
+  .state-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;border-radius:999px;padding:6px 13px;border:1px solid transparent;}
+  .state-chip i{width:7px;height:7px;border-radius:999px;}
+
+  /* ——— Zone 2 · 4-tab skeleton ——— */
+  .skeleton{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:start;}
+  .tabcol{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;}
+  .tabcol.hot{box-shadow:var(--shadow-lg);transform:translateY(-3px);border-color:var(--brand-rose);}
+  .tabcol-head{padding:18px 18px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--hair-soft);}
+  .tabcol-head .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface);color:var(--text-primary);flex:none;}
+  .tabcol-head.center .ic{background:var(--brand-rose);color:#fff;box-shadow:0 6px 16px rgba(194,24,91,.34);}
+  .tabcol-head .tt{font-size:15px;font-weight:700;}
+  .tabcol-head .tt small{display:block;font-size:11px;font-weight:500;color:var(--text-secondary);margin-top:2px;letter-spacing:.02em;}
+  .tabcol-body{padding:12px;display:flex;flex-direction:column;gap:8px;}
+  .scrcard{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border-radius:12px;padding:10px 11px;border:1px solid transparent;transition:background .15s,border-color .15s;}
+  .scrcard:hover{background:#fff;border-color:var(--hair);}
+  .scrcard .no{font-size:11px;font-weight:800;color:var(--brand-rose);background:var(--brand-rose-tint);border-radius:7px;min-width:26px;height:21px;display:grid;place-items:center;flex:none;margin-top:1px;}
+  .scrcard .tx{font-size:12.5px;font-weight:600;line-height:1.45;}
+  .scrcard .tx em{display:block;font-style:normal;font-weight:500;font-size:10.5px;color:var(--text-secondary);margin-top:1px;}
+  .scrcard.star .tx::after{content:"★ 核心";font-size:9px;font-weight:700;color:var(--brand-rose);margin-left:6px;letter-spacing:.04em;}
+  .scrcard.dark .no{background:var(--dark);color:#fff;}
+  .tabcol-foot{font-size:11px;color:var(--text-secondary);padding:0 14px 14px;}
+
+  /* ——— Zone 3 · full sitemap ——— */
+  .flows{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .flow{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:16px;}
+  .flow.span2{grid-column:span 2;}
+  .flow-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;}
+  .flow-badge{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff;flex:none;}
+  .flow-head .ft{font-size:14px;font-weight:700;}
+  .flow-head .ft small{display:block;font-size:11px;font-weight:500;color:var(--text-secondary);margin-top:1px;}
+  .flow-head .fpill{margin-left:auto;font-size:10px;font-weight:700;color:var(--text-secondary);background:var(--surface);border-radius:999px;padding:3px 9px;}
+  .screens{display:flex;flex-direction:column;gap:7px;}
+  .srow{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:10px;background:var(--surface);}
+  .srow .sno{font-size:11px;font-weight:800;color:#fff;background:var(--text-primary);border-radius:6px;min-width:24px;height:20px;display:grid;place-items:center;flex:none;}
+  .srow .snm{font-size:12.5px;font-weight:600;flex:1;}
+  .srow .tag{font-size:9.5px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:2px 7px;flex:none;}
+  .tag.light{background:#EEF4FF;color:#3B6FD4;}
+  .tag.dark{background:var(--dark);color:#fff;}
+  .tag.trans{background:linear-gradient(90deg,var(--dark) 50%,#EEF4FF 50%);color:#fff;}
+  .srow.star{background:linear-gradient(0deg,var(--brand-rose-tint),var(--brand-rose-tint)),var(--surface);}
+  .srow.star .snm::after{content:" ★";color:var(--brand-rose);}
+
+  /* ——— Zone 4 · tab bar variants ——— */
+  .variants-wrap{display:grid;grid-template-columns:340px 1fr;gap:34px;align-items:start;}
+  @media(max-width:900px){.variants-wrap{grid-template-columns:1fr;}}
+
+  /* phone frame */
+  .phone{width:300px;height:600px;background:#fff;border-radius:42px;border:11px solid #111317;box-shadow:var(--shadow-lg);position:relative;overflow:hidden;margin:0 auto;}
+  .phone .statusbar{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 26px 0 28px;font-size:13px;font-weight:600;color:var(--text-primary);}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:118px;height:26px;background:#111317;border-radius:0 0 16px 16px;z-index:6;}
+  .phone-screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface);}
+  .fake-content{flex:1;overflow:hidden;padding:6px 18px 0;}
+  .fake-h{height:13px;border-radius:6px;background:#E3E6EB;margin:14px 0 10px;width:55%;}
+  .fake-card{background:#fff;border-radius:16px;box-shadow:var(--shadow-sm);padding:14px;margin-bottom:12px;}
+  .fake-line{height:9px;border-radius:5px;background:#EDEFF3;margin:7px 0;}
+  .fake-line.w70{width:70%;}.fake-line.w40{width:40%;}.fake-line.w90{width:90%;}
+  .fake-hero{background:linear-gradient(135deg,#fff,var(--brand-rose-tint));border:1px solid var(--hair);}
+  .week-pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--brand-rose);background:#fff;border:1px solid var(--brand-rose-tint);border-radius:999px;padding:4px 10px;}
+
+  /* tab bar — shared */
+  .tabbar{position:relative;background:#fff;border-top:1px solid var(--hair-soft);padding-bottom:20px;}/* 20px ≈ home indicator safe area */
+  .home-ind{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:104px;height:5px;border-radius:999px;background:#111317;opacity:.85;}
+  .tabbar .row{display:flex;align-items:flex-end;justify-content:space-around;height:58px;padding:0 6px;}
+  .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:1;color:var(--sis-zero);cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px;padding-top:8px;}
+  .tab svg{width:23px;height:23px;}
+  .tab .tl{font-size:10px;font-weight:600;letter-spacing:.01em;}
+  .tab.active{color:var(--brand-rose);}
+
+  /* V1 raised circle */
+  .v1 .cap{flex:0 0 auto;width:62px;position:relative;}
+  .v1 .capbtn{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:58px;height:58px;border-radius:50%;background:var(--brand-rose);color:#fff;display:grid;place-items:center;box-shadow:0 10px 22px rgba(194,24,91,.4);border:4px solid #fff;cursor:pointer;}
+  .v1 .capbtn svg{width:26px;height:26px;}
+  .v1 .cap .tl{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);font-size:9.5px;font-weight:700;color:var(--brand-rose);white-space:nowrap;}
+
+  /* V2 notched dock */
+  .v2 .row{height:62px;}
+  .v2 .notch-fab{position:absolute;left:50%;top:-26px;transform:translateX(-50%);width:64px;height:64px;border-radius:50%;background:var(--brand-rose);color:#fff;display:grid;place-items:center;box-shadow:0 12px 26px rgba(194,24,91,.45);cursor:pointer;z-index:4;}
+  .v2 .notch-fab svg{width:28px;height:28px;}
+  .v2 .dockcut{flex:0 0 auto;width:70px;position:relative;}
+  .v2 .dockcut::before{content:"";position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:84px;height:34px;background:var(--surface);border-radius:0 0 999px 999px;}
+
+  /* V3 pill + wide capture */
+  .v3 .row{height:60px;gap:4px;}
+  .v3 .tab.active{color:var(--brand-rose);}
+  .v3 .tab.active .pillbg{background:var(--brand-rose-tint);}
+  .v3 .pillbg{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 14px;border-radius:14px;transition:background .15s;}
+  .v3 .capwide{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--brand-rose);color:#fff;border-radius:18px;padding:9px 16px;margin:0 4px 4px;box-shadow:0 8px 18px rgba(194,24,91,.38);cursor:pointer;}
+  .v3 .capwide svg{width:22px;height:22px;}
+  .v3 .capwide .tl{font-size:10px;font-weight:700;}
+
+  /* variant controls + annotations */
+  .var-controls{display:inline-flex;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:4px;gap:4px;box-shadow:var(--shadow-sm);margin-bottom:24px;}
+  .var-controls button{font-family:var(--font);font-size:13px;font-weight:600;color:var(--text-secondary);background:transparent;border:none;border-radius:9px;padding:9px 16px;cursor:pointer;transition:all .15s;}
+  .var-controls button.on{background:var(--brand-rose);color:#fff;box-shadow:0 4px 10px rgba(194,24,91,.3);}
+  .var-panel{display:none;}
+  .var-panel.on{display:block;}
+  .var-detail h3{font-size:18px;font-weight:700;margin-bottom:6px;}
+  .var-detail .vlede{font-size:13.5px;color:var(--text-secondary);margin-bottom:20px;max-width:480px;}
+  .var-detail .specs{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .spec{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:14px 15px;box-shadow:var(--shadow-sm);}
+  .spec .sk{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--brand-rose);margin-bottom:6px;}
+  .spec .sv{font-size:12.5px;color:var(--text-primary);line-height:1.6;}
+  .spec.full{grid-column:span 2;}
+  .veval{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .veval span{font-size:11px;font-weight:600;border-radius:999px;padding:4px 10px;}
+  .veval .pro{background:#E7F5EE;color:var(--sis-positive);}
+  .veval .con{background:#FBEFE9;color:var(--sis-negative);}
+
+  /* shared rules note */
+  .rules{margin-top:26px;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:20px 22px;}
+  .rules h4{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-primary);}
+  .rules ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;}
+  .rules li{font-size:12.5px;color:var(--text-secondary);padding-left:20px;position:relative;line-height:1.55;}
+  .rules li::before{content:"";position:absolute;left:0;top:7px;width:8px;height:8px;border-radius:3px;background:var(--brand-rose);}
+  .rules li b{color:var(--text-primary);font-weight:600;}
+  @media(max-width:760px){.rules ul{grid-template-columns:1fr;}.var-detail .specs{grid-template-columns:1fr;}.spec.full{grid-column:span 1;}}
+
+  .footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--hair);font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+</style>
+</head>
+<body>
+<main class="board">
+
+  <!-- ============ HEADER ============ -->
+  <header class="head">
+    <div>
+      <div class="eyebrow">DrRuby · §2 信息架构与导航</div>
+      <h1>信息架构全景图</h1>
+      <p class="sub">26 周 Split-Face 皮肤研究采集端 · Flutter 跨平台（Android + iOS 统一自定义设计系统）。覆盖 <b>24 屏 · 10 条流程（A–J）</b>，由 4-Tab 骨架与协议状态机串联。</p>
+    </div>
+    <div class="meta">
+      基线：<b>MVP2.md</b> · 提示词 <b>app-prompts v1.0</b><br/>
+      逻辑帧 <b>393 × 852</b> · 内容浅色 / 相机深色<br/>
+      品牌色 <b style="color:var(--brand-rose)">Ruby #C2185B</b>
+    </div>
+  </header>
+
+  <!-- token legend -->
+  <div class="legend">
+    <span class="swatch"><i style="background:var(--brand-rose)"></i><b>Rose</b> 主操作/品牌</span>
+    <span class="swatch"><i style="background:var(--brand-rose-tint)"></i><b>Rose tint</b> 品牌浅底</span>
+    <span class="swatch"><i style="background:var(--text-primary)"></i><b>Charcoal</b> 正文</span>
+    <span class="swatch"><i style="background:var(--text-secondary)"></i><b>Slate</b> 次要</span>
+    <span class="swatch"><i style="background:var(--sis-positive)"></i><b>SIS+ / MCS High</b> 改善</span>
+    <span class="swatch"><i style="background:var(--mcs-med)"></i><b>MCS Med</b> 中等</span>
+    <span class="swatch"><i style="background:var(--sis-negative)"></i><b>SIS− 刺激</b> 警示</span>
+    <span class="swatch"><i style="background:var(--dark)"></i><b>Dark</b> 相机/采集屏</span>
+  </div>
+
+  <!-- ============ ZONE 1 · PROTOCOL SPINE ============ -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">1</span>
+      <h2>协议主线 · 用户生命周期</h2>
+      <span class="note">一次性入组 → 14 天 Washout → 26 周双周采集循环。各阶段单向解锁。</span>
+    </div>
+    <div class="spine">
+      <div class="spine-track">
+        <div class="phase">
+          <div class="dot" style="background:#6B7280">入组</div>
+          <div class="nm">Onboarding</div>
+          <div class="desc">注册 · 知情同意 · 干预侧选择（不可改）</div>
+          <div class="scr">屏 1–9 · 流程 A</div>
+        </div>
+        <div class="connector"></div>
+        <div class="phase">
+          <div class="dot" style="background:#E0A23A">Washout</div>
+          <div class="nm">洗脱期 14 天</div>
+          <div class="desc">两侧回到同一基线，倒计时锁定 Week 0</div>
+          <div class="scr">屏 10 · 流程 B</div>
+        </div>
+        <div class="connector"></div>
+        <div class="phase">
+          <div class="dot" style="background:var(--brand-rose)">采集</div>
+          <div class="nm">Week 0 → 26</div>
+          <div class="desc">每周 2 次 Split-Face 采集 + SIS 结果反馈</div>
+          <div class="scr">屏 11–21 · 流程 C–G</div>
+        </div>
+      </div>
+      <div class="spine-loop">
+        <span class="lbl">研究协议状态机（F10）</span>
+        <span class="state-chip" style="background:#FBF3E2;color:#B07A14;border-color:#F0DEB0"><i style="background:#E0A23A"></i>Washout</span>
+        <span class="state-chip" style="background:#E7F5EE;color:#1E7A50;border-color:#BFE6D2"><i style="background:var(--sis-positive)"></i>Active 进行中</span>
+        <span class="state-chip" style="background:#F1F2F4;color:#5B616B;border-color:#E2E4E8"><i style="background:var(--sis-zero)"></i>Paused 已暂停 · 冻结周计数</span>
+        <span class="state-chip" style="background:var(--brand-rose-tint);color:var(--brand-rose);border-color:#F0BFD0"><i style="background:var(--brand-rose)"></i>Completed 完成 26 周</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ZONE 2 · 4-TAB SKELETON ============ -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">2</span>
+      <h2>主应用 · 4-Tab 骨架</h2>
+      <span class="note">Washout 完成后进入。底部 4 Tab，中心 Capture 为视觉主导（核心周操作）。悬停查看每 Tab 归属屏。</span>
+    </div>
+    <div class="skeleton">
+
+      <!-- Home -->
+      <div class="tabcol" data-tab="home">
+        <div class="tabcol-head">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+          </span>
+          <span class="tt">Home<small>研究仪表盘</small></span>
+        </div>
+        <div class="tabcol-body">
+          <div class="scrcard"><span class="no">11</span><span class="tx">首页 Dashboard<em>Week N/26 · 下次采集 · 协议状态</em></span></div>
+          <div class="scrcard"><span class="no">10</span><span class="tx">Washout 入口<em>未完成时驻留此处</em></span></div>
+        </div>
+        <div class="tabcol-foot">入口卡片 → 直达 Capture / 暂停研究 / 里程碑</div>
+      </div>
+
+      <!-- Insights -->
+      <div class="tabcol" data-tab="insights">
+        <div class="tabcol-head">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg>
+          </span>
+          <span class="tt">Insights<small>SIS 简版结果</small></span>
+        </div>
+        <div class="tabcol-body">
+          <div class="scrcard star"><span class="no">18</span><span class="tx">SIS 简版结果<em>SIS_delta 相对值 + 26 周 sparkline</em></span></div>
+          <div class="scrcard"><span class="no">19</span><span class="tx">行为操作<em>换产品 / 暂停研究</em></span></div>
+          <div class="scrcard"><span class="no">21</span><span class="tx">里程碑卡片<em>成就摘要 · 可分享</em></span></div>
+        </div>
+        <div class="tabcol-foot">App 仅简版；完整趋势/雷达在 Web 端</div>
+      </div>
+
+      <!-- Capture (center) -->
+      <div class="tabcol" data-tab="capture">
+        <div class="tabcol-head center">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>
+          </span>
+          <span class="tt">Capture<small>核心周操作 · 凸起</small></span>
+        </div>
+        <div class="tabcol-body">
+          <div class="scrcard"><span class="no">12</span><span class="tx">采集前清单<em>卸妆确认 + 光线检测</em></span></div>
+          <div class="scrcard dark star"><span class="no">13</span><span class="tx">AR 相机采集<em>左→右 · 实时质检 HUD</em></span></div>
+          <div class="scrcard dark"><span class="no">14</span><span class="tx">MCS 即时评分<em>High/Med/Low</em></span></div>
+          <div class="scrcard"><span class="no">15</span><span class="tx">Context 表单<em>混淆因素采集</em></span></div>
+          <div class="scrcard"><span class="no">16</span><span class="tx">上传进度/完成<em>离线队列</em></span></div>
+        </div>
+        <div class="tabcol-foot">线性强制流：12 → 13 → 14 → 15 → 16</div>
+      </div>
+
+      <!-- Profile -->
+      <div class="tabcol" data-tab="profile">
+        <div class="tabcol-head">
+          <span class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </span>
+          <span class="tt">Profile<small>账户与设置</small></span>
+        </div>
+        <div class="tabcol-body">
+          <div class="scrcard"><span class="no">24</span><span class="tx">Profile / 设置<em>分组列表 hub</em></span></div>
+          <div class="scrcard"><span class="no">17</span><span class="tx">健康数据连接<em>Apple Health / Health Connect</em></span></div>
+          <div class="scrcard"><span class="no">20</span><span class="tx">产品 regime 列表<em>face_side 标记</em></span></div>
+          <div class="scrcard"><span class="no">22</span><span class="tx">订阅层级 + 门控<em>Free/Paid/Premium/VIP</em></span></div>
+          <div class="scrcard"><span class="no">23</span><span class="tx">隐私中心<em>Tier 0/1/2 分层透明</em></span></div>
+        </div>
+        <div class="tabcol-foot">设置项二级页；含知情同意记录回看</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ZONE 3 · FULL SITEMAP ============ -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">3</span>
+      <h2>全屏清单 · 24 屏 · 10 流程（A–J）</h2>
+      <span class="note">标签：<span class="tag light" style="vertical-align:middle">浅色</span> 内容屏 · <span class="tag dark" style="vertical-align:middle">深色</span> 相机/采集屏 · ★ 核心屏</span>
+    </div>
+    <div class="flows">
+
+      <!-- A -->
+      <div class="flow span2">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#6B7280">A</span>
+          <span class="ft">入组 Onboarding<small>F1 · 一次性入组</small></span>
+          <span class="fpill">9 屏</span>
+        </div>
+        <div class="screens" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+          <div class="srow"><span class="sno">1</span><span class="snm">欢迎 / 启动页</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">2</span><span class="snm">注册 / 登录</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">3</span><span class="snm">入组说明</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">4</span><span class="snm">入组问卷（多步）</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">5</span><span class="snm">知情同意 + 签字</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">6</span><span class="snm">干预侧选择（不可改）</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">7</span><span class="snm">补剂快评 · Brenner 四色</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">8</span><span class="snm">健康数据授权</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">9</span><span class="snm">Onboarding 完成</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- B -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#E0A23A">B</span>
+          <span class="ft">Washout 期<small>F2 · 洗脱管理</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">10</span><span class="snm">Washout 倒计时（Day N/14）</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- C -->
+      <div class="flow span2">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:var(--brand-rose)">C</span>
+          <span class="ft">采集主流程<small>F3 · 核心 · App 主功能</small></span>
+          <span class="fpill">6 屏</span>
+        </div>
+        <div class="screens" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+          <div class="srow"><span class="sno">11</span><span class="snm">首页 / Dashboard</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">12</span><span class="snm">采集前清单</span><span class="tag dark">深</span></div>
+          <div class="srow star"><span class="sno">13</span><span class="snm">AR 相机采集</span><span class="tag dark">深</span></div>
+          <div class="srow"><span class="sno">14</span><span class="snm">MCS 即时评分</span><span class="tag trans">深→浅</span></div>
+          <div class="srow"><span class="sno">15</span><span class="snm">Context 表单</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">16</span><span class="snm">上传进度 / 完成</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- D -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#3B6FD4">D</span>
+          <span class="ft">穿戴设备<small>F4 · 健康数据</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">17</span><span class="snm">健康数据连接状态</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- E -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:var(--sis-positive)">E</span>
+          <span class="ft">SIS 结果与反馈<small>F9 · App 简版</small></span>
+          <span class="fpill">2 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow star"><span class="sno">18</span><span class="snm">SIS 简版结果页</span><span class="tag light">浅</span></div>
+          <div class="srow"><span class="sno">19</span><span class="snm">行为操作（换产品/暂停）</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- F -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#8B5CF6">F</span>
+          <span class="ft">干预产品管理<small>F7</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">20</span><span class="snm">产品 regime 列表 · face_side</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- G -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#E0613A">G</span>
+          <span class="ft">里程碑<small>F11 · 卡片摘要</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">21</span><span class="snm">里程碑卡片摘要</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- H -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#1F2024">H</span>
+          <span class="ft">订阅与门控<small>F12</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">22</span><span class="snm">订阅层级 + 皮肤镜门控</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- I -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:#0EA5A0">I</span>
+          <span class="ft">数据隐私<small>F16</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">23</span><span class="snm">隐私中心 · Tier 0/1/2</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+      <!-- J -->
+      <div class="flow">
+        <div class="flow-head">
+          <span class="flow-badge" style="background:var(--brand-rose)">J</span>
+          <span class="ft">个人中心<small>Profile</small></span>
+          <span class="fpill">1 屏</span>
+        </div>
+        <div class="screens">
+          <div class="srow"><span class="sno">24</span><span class="snm">Profile / 设置</span><span class="tag light">浅</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ ZONE 4 · TAB BAR VARIANTS ============ -->
+  <section class="section">
+    <div class="sec-head">
+      <span class="sec-num">4</span>
+      <h2>底部 Tab 栏 · 3 种设计变体</h2>
+      <span class="note">统一一套跨平台外观（Android + iOS 一致）。中心 Capture 视觉主导，尊重底部安全区。</span>
+    </div>
+
+    <div class="var-controls" role="tablist">
+      <button class="on" data-v="1">变体 1 · 经典浮起圆钮</button>
+      <button data-v="2">变体 2 · Docked 凹槽 FAB</button>
+      <button data-v="3">变体 3 · 药丸标签 + 宽采集</button>
+    </div>
+
+    <div class="variants-wrap">
+      <!-- phone -->
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="phone-screen">
+          <div class="statusbar"><span>9:41</span><span>● ▴ ▮</span></div>
+          <div class="fake-content">
+            <span class="week-pill">● Week 7 / 26 · Active</span>
+            <div class="fake-h"></div>
+            <div class="fake-card fake-hero">
+              <div class="fake-line w40"></div>
+              <div class="fake-line w90"></div>
+              <div class="fake-line w70"></div>
+            </div>
+            <div class="fake-card">
+              <div class="fake-line w70"></div>
+              <div class="fake-line w40"></div>
+            </div>
+            <div class="fake-card">
+              <div class="fake-line w90"></div>
+              <div class="fake-line w40"></div>
+            </div>
+          </div>
+
+          <!-- V1 -->
+          <nav class="tabbar v1" data-bar="1">
+            <div class="row">
+              <div class="tab active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+                <span class="tl">Home</span>
+              </div>
+              <div class="tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg>
+                <span class="tl">Insights</span>
+              </div>
+              <div class="cap">
+                <div class="capbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg></div>
+                <span class="tl">Capture</span>
+              </div>
+              <div class="tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                <span class="tl">Profile</span>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </nav>
+
+          <!-- V2 -->
+          <nav class="tabbar v2" data-bar="2" style="display:none;">
+            <div class="notch-fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg></div>
+            <div class="row">
+              <div class="tab active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+                <span class="tl">Home</span>
+              </div>
+              <div class="tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg>
+                <span class="tl">Insights</span>
+              </div>
+              <div class="dockcut"></div>
+              <div class="tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7 9 18l-5-5"/></svg>
+                <span class="tl">Products</span>
+              </div>
+              <div class="tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                <span class="tl">Profile</span>
+              </div>
+            </div>
+            <div class="home-ind"></div>
+          </nav>
+
+          <!-- V3 -->
+          <nav class="tabbar v3" data-bar="3" style="display:none;">
+            <div class="row">
+              <div class="tab active"><div class="pillbg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+                <span class="tl">Home</span>
+              </div></div>
+              <div class="tab"><div class="pillbg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></svg>
+                <span class="tl">Insights</span>
+              </div></div>
+              <div class="capwide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg><span class="tl">采集</span></div>
+              <div class="tab"><div class="pillbg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                <span class="tl">Profile</span>
+              </div></div>
+            </div>
+            <div class="home-ind"></div>
+          </nav>
+
+        </div>
+      </div>
+
+      <!-- variant detail panels -->
+      <div class="var-detail">
+        <div class="var-panel on" data-panel="1">
+          <h3>变体 1 · 经典浮起圆钮</h3>
+          <p class="vlede">标准 4 槽 Tab 栏，中心 Capture 为浮起的玫瑰圆钮，白色描边叠在栏顶。最稳妥、最易被识别为「核心操作」，符合「相机宣科」的预期。</p>
+          <div class="specs">
+            <div class="spec"><div class="sk">中心钮</div><div class="sv">58px 圆形，4px 白描边浮起，玫瑰投影；位于栏中心略高于其他 4 项。</div></div>
+            <div class="spec"><div class="sk">标签</div><div class="sv">4 项图标 + 文字标签；中心钮下方独立小标签「Capture」。</div></div>
+            <div class="spec"><div class="sk">安全区</div><div class="sv">栏底留 20px 安全区，Home Indicator / 手势条悬浮其上。</div></div>
+            <div class="spec"><div class="sk">命中区</div><div class="sv">每槽 ≥ 44pt；中心钮 58px 远超标准。</div></div>
+          </div>
+          <div class="veval"><span class="pro">✓ 识别度高</span><span class="pro">✓ 零学习成本</span><span class="con">— 略常规</span></div>
+        </div>
+
+        <div class="var-panel" data-panel="2">
+          <h3>变体 2 · Docked 凹槽 FAB</h3>
+          <p class="vlede">Tab 栏中部留出凹槽，托起一颗更大的玫瑰 FAB（64px）。更具品牌记忆点与「专业扫描设备」气质，把采集动作抬到最高优先级。</p>
+          <div class="specs">
+            <div class="spec"><div class="sk">中心 FAB</div><div class="sv">64px，悬浮于凹槽上方 26px；凹槽用背景色切出弧形缺口。</div></div>
+            <div class="spec"><div class="sk">槽位</div><div class="sv">FAB 无文字标签（图标自解释）；两侧各 2 项，可纳入 Products。</div></div>
+            <div class="spec"><div class="sk">安全区</div><div class="sv">栏更高 (62px)，仍保留 20px 底部安全区。</div></div>
+            <div class="spec"><div class="sk">注意</div><div class="sv">FAB 超出栏体，需确保点击区不被系统手势条吞掉。</div></div>
+          </div>
+          <div class="veval"><span class="pro">✓ 品牌记忆点强</span><span class="pro">✓ 采集最突出</span><span class="con">— FAB 无文字需图标足够清晰</span></div>
+        </div>
+
+        <div class="var-panel" data-panel="3">
+          <h3>变体 3 · 药丸标签 + 宽采集</h3>
+          <p class="vlede">激活项用玫瑰浅底药丸高亮（图标+文字），中心采集做成带「采集」文字的宽圆角按钮而非纯圆。文字前置、对比清晰，无障碍与双语（中/英）友好。</p>
+          <div class="specs">
+            <div class="spec"><div class="sk">激活态</div><div class="sv">选中 Tab 套玫瑰浅底圆角药丸，图标+文字同时变玫瑰色（不只靠颜色）。</div></div>
+            <div class="spec"><div class="sk">中心键</div><div class="sv">宽圆角按钮（18px 圆角）含相机图标 + 「采集」文字，体量仍最大。</div></div>
+            <div class="spec"><div class="sk">双语</div><div class="sv">文字前置，中文「采集」/英文「Capture」均可容纳；满足 WCAG AA。</div></div>
+            <div class="spec"><div class="sk">命中区</div><div class="sv">药丸整体可点，宽采集键横向加宽更易触达。</div></div>
+          </div>
+          <div class="veval"><span class="pro">✓ 无障碍最佳</span><span class="pro">✓ 双语友好</span><span class="con">— 视觉略密，需留白</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- shared rules -->
+    <div class="rules">
+      <h4>三个变体共同遵守的导航规则</h4>
+      <ul>
+        <li><b>4 Tab 固定</b>：Home / Insights / Capture（中心）/ Profile，顺序不变。</li>
+        <li><b>Capture 视觉主导</b>：体量、色彩、层级均高于其余 3 项——它是核心周操作。</li>
+        <li><b>跨平台一致</b>：Android 与 iOS 同一套外观；仅安全区/手势条按平台自适应。</li>
+        <li><b>底部安全区</b>：栏底预留约 20px，避让 iOS Home Indicator 与 Android 手势条。</li>
+        <li><b>不靠颜色单独表意</b>：激活态同时改变图标与文字（符合 WCAG AA）。</li>
+        <li><b>入组/Washout 期不显示 Tab 栏</b>：屏 1–10 为线性全屏流程，完成后才进入 4-Tab 骨架。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>DrRuby · 信息架构与导航 · 设计基线 app-prompts v1.0 / MVP2.md</span>
+    <span>App 仅承载简版结果 + 即时反馈；完整趋势 / 诊所门户 / RAG 来源页在 Web 端。</span>
+  </footer>
+
+</main>
+
+<script>
+  // —— Zone 2: hover 高亮 Tab 列 —— (装饰性，无状态依赖)
+  document.querySelectorAll('.tabcol').forEach(function(col){
+    col.addEventListener('mouseenter', function(){ col.classList.add('hot'); });
+    col.addEventListener('mouseleave', function(){ col.classList.remove('hot'); });
+  });
+
+  // —— Zone 4: 变体切换 ——
+  var ctrlBtns = document.querySelectorAll('.var-controls button');
+  var bars = { '1': document.querySelector('[data-bar="1"]'),
+               '2': document.querySelector('[data-bar="2"]'),
+               '3': document.querySelector('[data-bar="3"]') };
+  var panels = document.querySelectorAll('.var-panel');
+
+  ctrlBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var v = btn.getAttribute('data-v');
+      ctrlBtns.forEach(function(b){ b.classList.toggle('on', b === btn); });
+      Object.keys(bars).forEach(function(k){ bars[k].style.display = (k === v) ? '' : 'none'; });
+      panels.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-panel') === v); });
+    });
+  });
+</script>
+</body>
+</html>
